@@ -333,9 +333,9 @@ viewElement :
     -> Model
     -> Int -- Focused element
     -> Int
-    -> ( ( Int, Window ), Element msg )
+    -> ( ( Int, Window ), Int -> Window -> Element msg )
     -> Element.Attribute msg
-viewElement toMsg model focusedIndex ix ( ( zindex, position ), content ) =
+viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
     let
         bw =
             3
@@ -348,10 +348,10 @@ viewElement toMsg model focusedIndex ix ( ( zindex, position ), content ) =
     in
     Element.inFront
         (el
-            ([ Element.moveRight (getX position.position)
-             , Element.moveDown (getY position.position)
-             , height (px <| round <| getY position.size)
-             , width (px <| round <| getX position.size)
+            ([ Element.moveRight (getX window.position)
+             , Element.moveDown (getY window.position)
+             , height (px <| round <| getY window.size)
+             , width (px <| round <| getX window.size)
              , Element.onLeft
                 (resizer toMsg
                     Left
@@ -395,11 +395,11 @@ viewElement toMsg model focusedIndex ix ( ( zindex, position ), content ) =
                 ++ userSelect (model.drag == None && focusedIndex == ix)
             )
          <|
-            content
+            renderElement ix window
         )
 
 
-view : (Msg -> msg) -> Model -> List ( c, Element msg ) -> Element msg
+view : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> Element msg
 view toMsg model windowElements =
     el
         ([ width fill
@@ -424,7 +424,7 @@ view toMsg model windowElements =
         Element.none
 
 
-renderWindows : (Msg -> msg) -> Model -> List ( c, Element msg ) -> List (Attribute msg)
+renderWindows : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> List (Attribute msg)
 renderWindows toMsg model windowElements =
     let
         zipped =
@@ -433,7 +433,7 @@ renderWindows toMsg model windowElements =
                 (Array.toList model.windows
                     |> List.map2 Tuple.pair (getOrder model.order)
                 )
-                (List.map Tuple.second windowElements)
+                windowElements
 
         focusedIndex =
             Maybe.withDefault 0 (List.Extra.last model.order)
