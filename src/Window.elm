@@ -1,35 +1,24 @@
 module Window exposing (..)
 
 import Array exposing (Array)
-import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, moveDown, moveLeft, moveRight, moveUp, px, row, width)
+import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Json.Decode as D
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
+import Window.Internal exposing (Window)
+import Window.Resize exposing (Boundary(..), Hit(..), handleRezise, hasHitWindow)
 
 
 type alias Window =
-    { position : Vec2
-    , size : Vec2
-    }
-
-
-type Corner
-    = Top
-    | Right
-    | Bottom
-    | Left
-    | BottomRight
-    | BottomLeft
-    | TopRight
-    | TopLeft
+    Window.Internal.Window
 
 
 type Drag
     = None
-    | Reszie Int Corner
+    | Reszie Int Boundary
     | Move Int
 
 
@@ -64,7 +53,7 @@ empty =
 
 type Msg
     = TrackWindow Int Vec2
-    | ResizeWindow Int Corner
+    | ResizeWindow Int Boundary
     | StopTrackWindow
     | MouseMove Vec2
     | Focus Int
@@ -154,86 +143,10 @@ updateWindows model mp =
                     model.windows
 
 
-handleRezise : Window -> Corner -> Vec2 -> Window
-handleRezise wp corner delta =
-    (case corner of
-        Bottom ->
-            { wp
-                | size = add wp.size (setX 0 delta)
-            }
-
-        Top ->
-            { wp
-                | size = add wp.size (setX 0 delta |> scale -1)
-                , position = add wp.position (setX 0 delta)
-            }
-
-        Right ->
-            { wp
-                | size = add wp.size (setY 0 delta)
-            }
-
-        Left ->
-            { wp
-                | size = add wp.size (setY 0 delta |> scale -1)
-                , position = add wp.position (setY 0 delta)
-            }
-
-        BottomRight ->
-            { wp
-                | size = add wp.size delta
-            }
-
-        BottomLeft ->
-            { wp
-                | size =
-                    add wp.size (setY 0 delta |> scale -1)
-                        |> (\size -> add size (setX 0 delta))
-                , position = add wp.position (setY 0 delta)
-            }
-
-        TopRight ->
-            { wp
-                | size =
-                    add wp.size (setX 0 delta |> scale -1)
-                        |> (\size -> add size (setY 0 delta))
-                , position = add wp.position (setX 0 delta)
-            }
-
-        TopLeft ->
-            { wp
-                | size = add wp.size (delta |> scale -1)
-                , position = add wp.position delta
-            }
-    )
-        |> (\w ->
-                if getX w.size < 100 then
-                    { w
-                        | size = setX 100 w.size
-                        , position = setX (getX wp.position) w.position
-                    }
-
-                else
-                    w
-           )
-        |> (\w ->
-                if getY w.size < 100 then
-                    { w
-                        | size = setY 100 w.size
-                        , position = setY (getY wp.position) w.position
-                    }
-
-                else
-                    w
-           )
-
-
-resizer : (Msg -> msg) -> Corner -> List (Attribute msg) -> String -> Int -> Element msg
+resizer : (Msg -> msg) -> Boundary -> List (Attribute msg) -> String -> Int -> Element msg
 resizer toMsg corner attrs c ix =
     el
-        ([ htmlAttribute <|
-            on "pointerdown"
-                (D.succeed (toMsg <| ResizeWindow ix corner))
+        ([ htmlAttribute <| on "pointerdown" (D.succeed (toMsg <| ResizeWindow ix corner))
          , cursor c
          ]
             ++ attrs
@@ -319,84 +232,56 @@ move v window =
     }
 
 
-zero : Vec2
-zero =
-    vec2 0 0
+getWindowHits : Model -> Maybe Hit
+getWindowHits model =
+    List.map (hasHitWindow model.mousePosition) (Array.toList model.windows)
+        |> List.Extra.findMap identity
+
+
+
+--
+
+
+getCursor : Maybe Hit -> String
+getCursor mh =
+    case mh of
+        Nothing ->
+            "auto"
+
+        Just (Hit _ mc) ->
+            case mc of
+                Nothing ->
+                    "resize"
+
+                Just c ->
+                    case c of
+                        Top ->
+                            "ns-resize"
+
+                        Right ->
+                            "ew-resize"
+
+                        Bottom ->
+                            "ns-resize"
+
+                        Left ->
+                            "ew-resize"
+
+                        BottomRight ->
+                            "se-resize"
+
+                        BottomLeft ->
+                            "sw-resize"
+
+                        TopRight ->
+                            "ne-resize"
+
+                        TopLeft ->
+                            "nw-resize"
 
 
 
 -- View
-
-
-viewElement :
-    (Msg -> msg)
-    -> Model
-    -> Int -- Focused element
-    -> Int
-    -> ( ( Int, Window ), Int -> Window -> Element msg )
-    -> Element.Attribute msg
-viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
-    let
-        bw =
-            3
-
-        overhang =
-            0
-
-        rs =
-            bw
-    in
-    Element.inFront
-        (el
-            ([ Element.moveRight (getX window.position)
-             , Element.moveDown (getY window.position)
-             , height (px <| round <| getY window.size)
-             , width (px <| round <| getX window.size)
-             , Element.onLeft
-                (resizer toMsg
-                    Left
-                    [ height fill
-                    , width (px rs)
-                    , moveRight rs
-                    ]
-                    "ew-resize"
-                    ix
-                )
-             , Element.onRight
-                (resizer toMsg
-                    Right
-                    [ height fill
-                    , width (px rs)
-                    , moveLeft rs
-                    ]
-                    "ew-resize"
-                    ix
-                )
-             , Element.above
-                (row [ width fill, moveDown (bw + overhang) ]
-                    [ resizer toMsg TopLeft [ height (px rs), width (px rs) ] "nw-resize" ix
-                    , resizer toMsg Top [ height (px rs), width fill ] "ns-resize" ix
-                    , resizer toMsg TopRight [ height (px rs), width (px rs) ] "ne-resize" ix
-                    ]
-                )
-             , Element.below
-                (row [ width fill, moveUp (bw + overhang) ]
-                    [ resizer toMsg BottomLeft [ height (px rs), width (px rs) ] "sw-resize" ix
-                    , resizer toMsg Bottom [ height (px rs), width fill ] "ns-resize" ix
-                    , resizer toMsg BottomRight [ height (px rs), width (px rs) ] "se-resize" ix
-                    ]
-                )
-             , htmlAttribute
-                (Html.Events.on "pointerdown"
-                    (D.succeed (toMsg (Focus ix)))
-                )
-             , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10))
-             ]
-                ++ userSelect (model.drag == None && focusedIndex == ix)
-            )
-         <|
-            renderElement ix window
-        )
 
 
 view : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> Element msg
@@ -418,6 +303,7 @@ view toMsg model windowElements =
                 )
             )
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
+         , cursor <| getCursor (getWindowHits model)
          ]
             ++ renderWindows toMsg model windowElements
         )
@@ -439,6 +325,33 @@ renderWindows toMsg model windowElements =
             Maybe.withDefault 0 (List.Extra.last model.order)
     in
     List.indexedMap (viewElement toMsg model focusedIndex) zipped
+
+
+viewElement :
+    (Msg -> msg)
+    -> Model
+    -> Int -- Focused element
+    -> Int
+    -> ( ( Int, Window ), Int -> Window -> Element msg )
+    -> Element.Attribute msg
+viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
+    Element.inFront
+        (el
+            ([ Element.moveRight (getX window.position)
+             , Element.moveDown (getY window.position)
+             , height (px <| round <| getY window.size)
+             , width (px <| round <| getX window.size)
+             , htmlAttribute
+                (Html.Events.on "pointerdown"
+                    (D.succeed (toMsg (Focus ix)))
+                )
+             , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10))
+             ]
+                ++ userSelect (model.drag == None && focusedIndex == ix)
+            )
+         <|
+            renderElement ix window
+        )
 
 
 getOrder : List Int -> List Int
