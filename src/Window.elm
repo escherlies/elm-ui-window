@@ -114,16 +114,20 @@ handlePointerDown model =
     getWindowHitsIx model
         |> Maybe.map
             (\( ix, h ) ->
-                { model
-                    | drag =
-                        case h of
-                            HitArea ->
-                                None
+                if model.drag == None then
+                    { model
+                        | drag =
+                            case h of
+                                HitArea ->
+                                    None
 
-                            HitBoundary b ->
-                                Reszie ix b
-                    , order = focusIx ix model.order
-                }
+                                HitBoundary b ->
+                                    Reszie ix b
+                        , order = focusIx ix model.order
+                    }
+
+                else
+                    model
             )
         |> Maybe.map (\m -> ( m, Cmd.none ))
         |> Maybe.withDefault ( model, Cmd.none )
@@ -252,14 +256,15 @@ move v window =
 
 getWindowHits : Model -> Maybe Hit
 getWindowHits model =
-    Array.toList model.windows
+    sortedByOrder model
+        |> List.map Tuple.second
         |> List.map (getHit defaultTolerance model.mousePosition)
         |> List.Extra.findMap identity
 
 
-getWindowHitsIx : Model -> Maybe ( Int, Hit )
+getWindowHitsIx : Model -> Maybe ( Index, Hit )
 getWindowHitsIx model =
-    Array.toIndexedList model.windows
+    sortedByOrder model
         |> List.Extra.findMap
             (\( ix, w ) ->
                 Maybe.map (Tuple.pair ix) <| getHit defaultTolerance model.mousePosition w
@@ -351,11 +356,8 @@ renderWindows : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> 
 renderWindows toMsg model windowElements =
     let
         zipped =
-            List.map2
-                Tuple.pair
-                (Array.toList model.windows
-                    |> List.map2 Tuple.pair (getOrder model.order)
-                )
+            List.Extra.zip
+                (withOrder model)
                 windowElements
 
         focusedIndex =
@@ -420,26 +422,38 @@ showBoundaries tol zindex window =
         (getBoundaries window tol)
 
 
-getOrder : List Int -> List Int
+getOrder : List Index -> List ZIndex
 getOrder listOfIndex =
     listOfIndex
-        |> List.indexedMap (\position index -> ( position, index ))
+        |> List.indexedMap (\zIndex index -> ( zIndex, index ))
         -- Sort by index so we can zip this with our window elements again
         |> List.sortBy Tuple.second
-        -- Get position
+        -- Get z index
         |> List.map Tuple.first
 
 
-withOrder : Model -> List ( Int, Window )
+type alias Index =
+    Int
+
+
+type alias ZIndex =
+    Int
+
+
+withOrder : Model -> List ( ZIndex, Window )
 withOrder m =
-    List.Extra.zip (getOrder m.order) (toList m.windows)
+    List.Extra.zip
+        (getOrder m.order)
+        (toList m.windows)
 
 
-sortedByOrder : Model -> List Window
+sortedByOrder : Model -> List ( Index, Window )
 sortedByOrder m =
     withOrder m
-        |> List.sortBy Tuple.first
-        |> List.map Tuple.second
+        |> List.indexedMap (\ix ( zix, w ) -> ( ix, zix, w ))
+        |> List.sortBy (\( _, zix, _ ) -> zix)
+        |> List.map (\( ix, _, w ) -> ( ix, w ))
+        |> List.reverse
 
 
 uncurry : (a -> b -> c) -> ( a, b ) -> c
