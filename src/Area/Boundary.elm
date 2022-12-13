@@ -20,18 +20,16 @@ type Boundary
 
 
 type Hit
-    = Hit Int (Maybe Boundary)
+    = HitArea
+    | HitBoundary Boundary
 
 
-defaultTolerance : Vec2
-defaultTolerance =
-    vec2uni 6
-
-
-hasHitWindow : Vec2 -> Vec2 -> Area -> Maybe Hit
-hasHitWindow tol mp w =
+getHit : Vec2 -> Vec2 -> Area -> Maybe Hit
+getHit tol mp w =
     if isInArea (withTolerance tol w) mp then
-        hitBoundary w tol mp
+        Maybe.map HitBoundary (hitBoundary w tol mp)
+            |> Maybe.withDefault HitArea
+            |> Just
 
     else
         Nothing
@@ -41,35 +39,35 @@ hasHitWindow tol mp w =
 -- Check boundary
 
 
-hitBoundary : Area -> Vec2 -> Vec2 -> Maybe Hit
+hitBoundary : Area -> Vec2 -> Vec2 -> Maybe Boundary
 hitBoundary w tol mp =
     let
         isAt areaFn =
             isInArea (areaFn w tol) mp
     in
     if isAt topLeft then
-        Just (Hit 0 (Just TopLeft))
+        Just TopLeft
 
     else if isAt topRight then
-        Just (Hit 0 (Just TopRight))
+        Just TopRight
 
     else if isAt bottomLeft then
-        Just (Hit 0 (Just BottomLeft))
+        Just BottomLeft
 
     else if isAt bottomRight then
-        Just (Hit 0 (Just BottomRight))
+        Just BottomRight
 
     else if isAt top then
-        Just (Hit 0 (Just Top))
+        Just Top
 
     else if isAt left then
-        Just (Hit 0 (Just Left))
+        Just Left
 
     else if isAt right then
-        Just (Hit 0 (Just Right))
+        Just Right
 
     else if isAt bottom then
-        Just (Hit 0 (Just Bottom))
+        Just Bottom
 
     else
         Nothing
@@ -84,6 +82,11 @@ withTolerance tol { position, size } =
     { position = sub position tol
     , size = add size (cornerSize tol)
     }
+
+
+defaultTolerance : Vec2
+defaultTolerance =
+    vec2uni 6
 
 
 cornerSize : Vec2 -> Vec2

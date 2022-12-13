@@ -1,7 +1,7 @@
 module Window exposing (..)
 
 import Area exposing (Area)
-import Area.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, handleRezise, hasHitWindow)
+import Area.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, getHit, handleRezise)
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, rgb, width)
 import Element.Border
@@ -236,7 +236,7 @@ move v window =
 getWindowHits : Model -> Maybe Hit
 getWindowHits model =
     Array.toList model.windows
-        |> List.map (hasHitWindow defaultTolerance model.mousePosition)
+        |> List.map (getHit defaultTolerance model.mousePosition)
         |> List.Extra.findMap identity
 
 
@@ -250,13 +250,13 @@ getCursor mh =
         Nothing ->
             "auto"
 
-        Just (Hit _ mc) ->
-            case mc of
-                Nothing ->
+        Just h ->
+            case h of
+                HitArea ->
                     "resize"
 
-                Just c ->
-                    case c of
+                HitBoundary b ->
+                    case b of
                         Top ->
                             "ns-resize"
 
