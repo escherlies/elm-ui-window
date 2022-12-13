@@ -6,7 +6,7 @@ import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, rgb, width)
 import Element.Border
 import Html.Attributes exposing (style)
-import Html.Events exposing (on)
+import Html.Events
 import Json.Decode as D
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
@@ -56,6 +56,7 @@ type Msg
     = TrackWindow Int Vec2
     | ResizeWindow Int Boundary
     | StopTrackWindow
+    | PointerDown
     | MouseMove Vec2
     | Focus Int
 
@@ -63,6 +64,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
+        PointerDown ->
+            handlePointerDown model
+
         ResizeWindow ix dir ->
             ( { model | drag = Reszie ix dir }, Cmd.none )
 
@@ -90,15 +94,39 @@ update msg model =
 
         Focus ix ->
             ( { model
-                | order =
-                    model.order
-                        -- Add selected item to end of stack
-                        |> (\zis -> zis ++ [ ix ])
-                        -- Uniq
-                        |> List.Extra.remove ix
+                | order = focusIx ix model.order
               }
             , Cmd.none
             )
+
+
+focusIx : a -> List a -> List a
+focusIx ix o =
+    o
+        -- Add selected item to end of stack
+        |> (\zis -> zis ++ [ ix ])
+        -- Uniq
+        |> List.Extra.remove ix
+
+
+handlePointerDown : Model -> ( Model, Cmd msg )
+handlePointerDown model =
+    getWindowHitsIx model
+        |> Maybe.map
+            (\( ix, h ) ->
+                { model
+                    | drag =
+                        case h of
+                            HitArea ->
+                                None
+
+                            HitBoundary b ->
+                                Reszie ix b
+                    , order = focusIx ix model.order
+                }
+            )
+        |> Maybe.map (\m -> ( m, Cmd.none ))
+        |> Maybe.withDefault ( model, Cmd.none )
 
 
 
@@ -142,17 +170,6 @@ updateWindows model mp =
                 Nothing ->
                     -- Should never happen
                     model.windows
-
-
-resizer : (Msg -> msg) -> Boundary -> List (Attribute msg) -> String -> Int -> Element msg
-resizer toMsg corner attrs c ix =
-    el
-        ([ htmlAttribute <| on "pointerdown" (D.succeed (toMsg <| ResizeWindow ix corner))
-         , cursor c
-         ]
-            ++ attrs
-        )
-        Element.none
 
 
 
@@ -240,6 +257,15 @@ getWindowHits model =
         |> List.Extra.findMap identity
 
 
+getWindowHitsIx : Model -> Maybe ( Int, Hit )
+getWindowHitsIx model =
+    Array.toIndexedList model.windows
+        |> List.Extra.findMap
+            (\( ix, w ) ->
+                Maybe.map (Tuple.pair ix) <| getHit defaultTolerance model.mousePosition w
+            )
+
+
 
 --
 
@@ -253,7 +279,7 @@ getCursor mh =
         Just h ->
             case h of
                 HitArea ->
-                    "resize"
+                    "auto"
 
                 HitBoundary b ->
                     case b of
@@ -293,6 +319,10 @@ view toMsg model windowElements =
          , height fill
          , clip
          , htmlAttribute
+            (Html.Events.on "pointerdown"
+                (D.succeed (toMsg PointerDown))
+            )
+         , htmlAttribute
             (Html.Events.on "pointerup"
                 (D.succeed (toMsg StopTrackWindow))
             )
@@ -310,7 +340,7 @@ view toMsg model windowElements =
             ++ renderWindows toMsg model windowElements
          -- -- Debug
          -- ++ (withOrder model
-         --         |> List.map (uncurry (showBoundaries defaultTol))
+         --         |> List.map (uncurry (showBoundaries defaultTolerance))
          --         |> List.concat
          --    )
         )
