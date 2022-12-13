@@ -308,9 +308,11 @@ view toMsg model windowElements =
          , cursor <| getCursor (getWindowHits model)
          ]
             ++ renderWindows toMsg model windowElements
-            ++ (List.map (uncurry (showBoundaries defaultTol)) (withOrder model)
-                    |> List.concat
-               )
+         -- -- Debug
+         -- ++ (withOrder model
+         --         |> List.map (uncurry (showBoundaries defaultTol))
+         --         |> List.concat
+         --    )
         )
         Element.none
 

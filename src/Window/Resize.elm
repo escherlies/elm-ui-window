@@ -26,7 +26,7 @@ type Hit
 
 defaultTol : Vec2
 defaultTol =
-    vec2uni 10
+    vec2uni 6
 
 
 hasHitWindow : Vec2 -> Vec2 -> Window -> Maybe Hit
@@ -131,28 +131,28 @@ bottomRightCorner w tol =
 topEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
 topEdge w tol =
     { position = sub w.position tol
-    , size = cornerSize tol |> addXof (add w.size (cornerSize tol))
+    , size = cornerSize tol |> addXof w.size
     }
 
 
 bottomEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
 bottomEdge w tol =
     { position = sub w.position tol |> addYof w.size
-    , size = cornerSize tol |> addXof (add w.size (cornerSize tol))
+    , size = cornerSize tol |> addXof w.size
     }
 
 
 leftEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
 leftEdge w tol =
     { position = sub w.position tol
-    , size = cornerSize tol |> addYof (add w.size (cornerSize tol))
+    , size = cornerSize tol |> addYof w.size
     }
 
 
 rightEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
 rightEdge w tol =
     { position = sub w.position tol |> addXof w.size
-    , size = cornerSize tol |> addYof (add w.size (cornerSize tol))
+    , size = cornerSize tol |> addYof w.size
     }
 
 
