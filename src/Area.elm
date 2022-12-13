@@ -1,4 +1,4 @@
-module Window.Area exposing (..)
+module Area exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
 

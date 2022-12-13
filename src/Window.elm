@@ -1,5 +1,7 @@
 module Window exposing (..)
 
+import Area exposing (Area)
+import Area.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, handleRezise, hasHitWindow)
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, rgb, width)
 import Element.Border
@@ -9,12 +11,10 @@ import Json.Decode as D
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
-import Window.Area exposing (Area)
-import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, handleRezise, hasHitWindow)
 
 
 type alias Window =
-    Window.Area.Area
+    Area.Area
 
 
 type Drag
