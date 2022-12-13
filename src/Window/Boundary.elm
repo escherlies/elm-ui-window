@@ -1,8 +1,7 @@
-module Window.Resize exposing (..)
+module Window.Boundary exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
-import Window.Internal exposing (Window)
-import Window.Vec2 exposing (addXof, addYof, isInArea, vec2uni)
+import Window.Area exposing (Area, addXof, addYof, isInArea, vec2uni)
 
 
 type Boundary
@@ -24,12 +23,12 @@ type Hit
     = Hit Int (Maybe Boundary)
 
 
-defaultTol : Vec2
-defaultTol =
+defaultTolerance : Vec2
+defaultTolerance =
     vec2uni 6
 
 
-hasHitWindow : Vec2 -> Vec2 -> Window -> Maybe Hit
+hasHitWindow : Vec2 -> Vec2 -> Area -> Maybe Hit
 hasHitWindow tol mp w =
     if isInArea (withTolerance tol w) mp then
         hitBoundary w tol mp
@@ -42,34 +41,34 @@ hasHitWindow tol mp w =
 -- Check boundary
 
 
-hitBoundary : { position : Vec2, size : Vec2 } -> Vec2 -> Vec2 -> Maybe Hit
+hitBoundary : Area -> Vec2 -> Vec2 -> Maybe Hit
 hitBoundary w tol mp =
     let
-        isIn areaFn =
+        isAt areaFn =
             isInArea (areaFn w tol) mp
     in
-    if isIn topLeftCorner then
+    if isAt topLeft then
         Just (Hit 0 (Just TopLeft))
 
-    else if isIn topRightCorner then
+    else if isAt topRight then
         Just (Hit 0 (Just TopRight))
 
-    else if isIn bottomLeftCorner then
+    else if isAt bottomLeft then
         Just (Hit 0 (Just BottomLeft))
 
-    else if isIn bottomRightCorner then
+    else if isAt bottomRight then
         Just (Hit 0 (Just BottomRight))
 
-    else if isIn topEdge then
+    else if isAt top then
         Just (Hit 0 (Just Top))
 
-    else if isIn leftEdge then
+    else if isAt left then
         Just (Hit 0 (Just Left))
 
-    else if isIn rightEdge then
+    else if isAt right then
         Just (Hit 0 (Just Right))
 
-    else if isIn bottomEdge then
+    else if isAt bottom then
         Just (Hit 0 (Just Bottom))
 
     else
@@ -80,7 +79,7 @@ hitBoundary w tol mp =
 --
 
 
-withTolerance : Vec2 -> { a | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
+withTolerance : Vec2 -> Area -> Area
 withTolerance tol { position, size } =
     { position = sub position tol
     , size = add size (cornerSize tol)
@@ -96,29 +95,29 @@ cornerSize tol =
 -- Corners
 
 
-topLeftCorner : { a | position : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-topLeftCorner w tol =
+topLeft : Area -> Vec2 -> Area
+topLeft w tol =
     { position = sub w.position tol
     , size = cornerSize tol
     }
 
 
-topRightCorner : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-topRightCorner w tol =
+topRight : Area -> Vec2 -> Area
+topRight w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol
     }
 
 
-bottomLeftCorner : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-bottomLeftCorner w tol =
+bottomLeft : Area -> Vec2 -> Area
+bottomLeft w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol
     }
 
 
-bottomRightCorner : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-bottomRightCorner w tol =
+bottomRight : Area -> Vec2 -> Area
+bottomRight w tol =
     { position = sub w.position tol |> add w.size
     , size = cornerSize tol
     }
@@ -128,29 +127,29 @@ bottomRightCorner w tol =
 -- Edges
 
 
-topEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-topEdge w tol =
+top : Area -> Vec2 -> Area
+top w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addXof w.size
     }
 
 
-bottomEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-bottomEdge w tol =
+bottom : Area -> Vec2 -> Area
+bottom w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol |> addXof w.size
     }
 
 
-leftEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-leftEdge w tol =
+left : Area -> Vec2 -> Area
+left w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addYof w.size
     }
 
 
-rightEdge : { a | position : Vec2, size : Vec2 } -> Vec2 -> { position : Vec2, size : Vec2 }
-rightEdge w tol =
+right : Area -> Vec2 -> Area
+right w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol |> addYof w.size
     }
@@ -160,16 +159,21 @@ rightEdge w tol =
 --
 
 
-getBoundaries : { a | position : Vec2, size : Vec2 } -> Vec2 -> List { position : Vec2, size : Vec2 }
+{-| Get all boundaries for a given window
+
+Maybe helpful to display boundaries for debugging
+
+-}
+getBoundaries : Area -> Vec2 -> List Area
 getBoundaries w tol =
-    [ topEdge w tol
-    , bottomEdge w tol
-    , leftEdge w tol
-    , rightEdge w tol
-    , topLeftCorner w tol
-    , topRightCorner w tol
-    , bottomLeftCorner w tol
-    , bottomRightCorner w tol
+    [ top w tol
+    , bottom w tol
+    , left w tol
+    , right w tol
+    , topLeft w tol
+    , topRight w tol
+    , bottomLeft w tol
+    , bottomRight w tol
     ]
 
 
@@ -179,7 +183,7 @@ getBoundaries w tol =
 
 {-| Add the delta of the movement to the window
 -}
-handleRezise : Window -> Boundary -> Vec2 -> Window
+handleRezise : Area -> Boundary -> Vec2 -> Area
 handleRezise wp corner delta =
     (case corner of
         Bottom ->

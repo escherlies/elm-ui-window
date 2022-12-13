@@ -1,6 +1,17 @@
-module Window.Vec2 exposing (..)
+module Window.Area exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
+
+
+type alias Area =
+    { position : Vec2
+    , size : Vec2
+    }
+
+
+isInArea : Area -> Vec2 -> Bool
+isInArea { position, size } v =
+    vec2lt position v && vec2lt v (add position size)
 
 
 
@@ -29,11 +40,6 @@ vec2uni u =
 zero : Vec2
 zero =
     vec2uni 0
-
-
-isInArea : { a | position : Vec2, size : Vec2 } -> Vec2 -> Bool
-isInArea { position, size } v =
-    vec2lt position v && vec2lt v (add position size)
 
 
 vec2lt : Vec2 -> Vec2 -> Bool

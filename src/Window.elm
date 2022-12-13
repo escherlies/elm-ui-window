@@ -9,12 +9,12 @@ import Json.Decode as D
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
-import Window.Internal exposing (Window)
-import Window.Resize exposing (Boundary(..), Hit(..), defaultTol, getBoundaries, handleRezise, hasHitWindow)
+import Window.Area exposing (Area)
+import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, handleRezise, hasHitWindow)
 
 
 type alias Window =
-    Window.Internal.Window
+    Window.Area.Area
 
 
 type Drag
@@ -236,7 +236,7 @@ move v window =
 getWindowHits : Model -> Maybe Hit
 getWindowHits model =
     Array.toList model.windows
-        |> List.map (hasHitWindow defaultTol model.mousePosition)
+        |> List.map (hasHitWindow defaultTolerance model.mousePosition)
         |> List.Extra.findMap identity
 
 
@@ -361,7 +361,7 @@ viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
         )
 
 
-showBoundaries : Vec2 -> Int -> { a | position : Vec2, size : Vec2 } -> List (Attribute msg)
+showBoundaries : Vec2 -> Int -> Area -> List (Attribute msg)
 showBoundaries tol zindex window =
     List.indexedMap
         (\ix b ->
