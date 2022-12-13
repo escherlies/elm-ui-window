@@ -54,11 +54,9 @@ empty =
 
 type Msg
     = TrackWindow Int Vec2
-    | ResizeWindow Int Boundary
     | StopTrackWindow
     | PointerDown
     | MouseMove Vec2
-    | Focus Int
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -66,9 +64,6 @@ update msg model =
     case msg of
         PointerDown ->
             handlePointerDown model
-
-        ResizeWindow ix dir ->
-            ( { model | drag = Reszie ix dir }, Cmd.none )
 
         TrackWindow ix mp ->
             ( { model
@@ -88,13 +83,6 @@ update msg model =
             ( { model
                 | mousePosition = mp
                 , windows = updateWindows model mp
-              }
-            , Cmd.none
-            )
-
-        Focus ix ->
-            ( { model
-                | order = focusIx ix model.order
               }
             , Cmd.none
             )
@@ -127,7 +115,10 @@ handlePointerDown model =
                     }
 
                 else
-                    model
+                    { model
+                        | order =
+                            focusIx ix model.order
+                    }
             )
         |> Maybe.map (\m -> ( m, Cmd.none ))
         |> Maybe.withDefault ( model, Cmd.none )
@@ -324,8 +315,8 @@ view toMsg model windowElements =
          , height fill
          , clip
          , htmlAttribute
-            (Html.Events.on "pointerdown"
-                (D.succeed (toMsg PointerDown))
+            (Html.Events.stopPropagationOn "pointerdown"
+                (D.succeed ( toMsg PointerDown, True ))
             )
          , htmlAttribute
             (Html.Events.on "pointerup"
@@ -342,7 +333,7 @@ view toMsg model windowElements =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getWindowHits model)
          ]
-            ++ renderWindows toMsg model windowElements
+            ++ renderWindows model windowElements
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -352,8 +343,8 @@ view toMsg model windowElements =
         Element.none
 
 
-renderWindows : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> List (Attribute msg)
-renderWindows toMsg model windowElements =
+renderWindows : Model -> List (Int -> Window -> Element msg) -> List (Attribute msg)
+renderWindows model windowElements =
     let
         zipped =
             List.Extra.zip
@@ -363,27 +354,22 @@ renderWindows toMsg model windowElements =
         focusedIndex =
             Maybe.withDefault 0 (List.Extra.last model.order)
     in
-    List.indexedMap (viewElement toMsg model focusedIndex) zipped
+    List.indexedMap (viewElement model focusedIndex) zipped
 
 
 viewElement :
-    (Msg -> msg)
-    -> Model
+    Model
     -> Int -- Focused element
     -> Int
     -> ( ( Int, Window ), Int -> Window -> Element msg )
     -> Element.Attribute msg
-viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
+viewElement model focusedIndex ix ( ( zindex, window ), renderElement ) =
     Element.inFront
         (el
             ([ Element.moveRight (getX window.position)
              , Element.moveDown (getY window.position)
              , height (px <| round <| getY window.size)
              , width (px <| round <| getX window.size)
-             , htmlAttribute
-                (Html.Events.on "pointerdown"
-                    (D.succeed (toMsg (Focus ix)))
-                )
              , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10))
              ]
                 ++ userSelect (model.drag == None && focusedIndex == ix)
