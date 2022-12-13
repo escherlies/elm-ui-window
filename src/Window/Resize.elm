@@ -24,12 +24,13 @@ type Hit
     = Hit Int (Maybe Boundary)
 
 
-hasHitWindow : Vec2 -> Window -> Maybe Hit
-hasHitWindow mp w =
-    let
-        tol =
-            vec2uni 5
-    in
+defaultTol : Vec2
+defaultTol =
+    vec2uni 10
+
+
+hasHitWindow : Vec2 -> Vec2 -> Window -> Maybe Hit
+hasHitWindow tol mp w =
     if isInArea (withTolerance tol w) mp then
         hitBoundary w tol mp
 
@@ -81,7 +82,9 @@ hitBoundary w tol mp =
 
 withTolerance : Vec2 -> { a | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
 withTolerance tol { position, size } =
-    { position = sub position tol, size = add size tol }
+    { position = sub position tol
+    , size = add size (cornerSize tol)
+    }
 
 
 cornerSize : Vec2 -> Vec2
@@ -151,6 +154,23 @@ rightEdge w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol |> addYof (add w.size (cornerSize tol))
     }
+
+
+
+--
+
+
+getBoundaries : { a | position : Vec2, size : Vec2 } -> Vec2 -> List { position : Vec2, size : Vec2 }
+getBoundaries w tol =
+    [ topEdge w tol
+    , bottomEdge w tol
+    , leftEdge w tol
+    , rightEdge w tol
+    , topLeftCorner w tol
+    , topRightCorner w tol
+    , bottomLeftCorner w tol
+    , bottomRightCorner w tol
+    ]
 
 
 

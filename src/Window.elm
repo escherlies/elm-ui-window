@@ -1,7 +1,8 @@
 module Window exposing (..)
 
-import Array exposing (Array)
-import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
+import Array exposing (Array, toList)
+import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, rgb, width)
+import Element.Border
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Json.Decode as D
@@ -9,7 +10,7 @@ import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import Window.Internal exposing (Window)
-import Window.Resize exposing (Boundary(..), Hit(..), handleRezise, hasHitWindow)
+import Window.Resize exposing (Boundary(..), Hit(..), defaultTol, getBoundaries, handleRezise, hasHitWindow)
 
 
 type alias Window =
@@ -234,7 +235,8 @@ move v window =
 
 getWindowHits : Model -> Maybe Hit
 getWindowHits model =
-    List.map (hasHitWindow model.mousePosition) (Array.toList model.windows)
+    Array.toList model.windows
+        |> List.map (hasHitWindow defaultTol model.mousePosition)
         |> List.Extra.findMap identity
 
 
@@ -306,6 +308,9 @@ view toMsg model windowElements =
          , cursor <| getCursor (getWindowHits model)
          ]
             ++ renderWindows toMsg model windowElements
+            ++ (List.map (uncurry (showBoundaries defaultTol)) (withOrder model)
+                    |> List.concat
+               )
         )
         Element.none
 
@@ -354,6 +359,35 @@ viewElement toMsg model focusedIndex ix ( ( zindex, window ), renderElement ) =
         )
 
 
+showBoundaries : Vec2 -> Int -> { a | position : Vec2, size : Vec2 } -> List (Attribute msg)
+showBoundaries tol zindex window =
+    List.indexedMap
+        (\ix b ->
+            Element.inFront
+                (el
+                    [ Element.moveRight (getX b.position)
+                    , Element.moveDown (getY b.position)
+                    , width (px <| round (getX b.size))
+                    , height (px <| round (getY b.size))
+                    , Element.Border.width 1
+                    , Element.Border.color
+                        (if ix < 2 then
+                            rgb 1 0 0
+
+                         else if ix < 4 then
+                            rgb 0 1 0
+
+                         else
+                            rgb 0 0 1
+                        )
+                    , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10 + 1))
+                    ]
+                    Element.none
+                )
+        )
+        (getBoundaries window tol)
+
+
 getOrder : List Int -> List Int
 getOrder listOfIndex =
     listOfIndex
@@ -362,3 +396,20 @@ getOrder listOfIndex =
         |> List.sortBy Tuple.second
         -- Get position
         |> List.map Tuple.first
+
+
+withOrder : Model -> List ( Int, Window )
+withOrder m =
+    List.Extra.zip (getOrder m.order) (toList m.windows)
+
+
+sortedByOrder : Model -> List Window
+sortedByOrder m =
+    withOrder m
+        |> List.sortBy Tuple.first
+        |> List.map Tuple.second
+
+
+uncurry : (a -> b -> c) -> ( a, b ) -> c
+uncurry fn ( a, b ) =
+    fn a b
