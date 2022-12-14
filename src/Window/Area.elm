@@ -1,6 +1,7 @@
-module Area exposing (..)
+module Window.Area exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
+import Window.Extra exposing (w)
 
 
 type alias Area =
@@ -33,8 +34,8 @@ addYof =
 
 
 vec2uni : Float -> Vec2
-vec2uni u =
-    vec2 u u
+vec2uni =
+    w vec2
 
 
 zero : Vec2

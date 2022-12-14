@@ -1,7 +1,7 @@
-module Area.Boundary exposing (..)
+module Window.Boundary exposing (..)
 
-import Area exposing (Area, addXof, addYof, isInArea, vec2uni)
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
+import Window.Area exposing (Area, addXof, addYof, isInArea, vec2uni)
 
 
 type Boundary
