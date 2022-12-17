@@ -1,7 +1,8 @@
 module Window.Boundary exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
-import Window.Plane exposing (Plane, addXof, addYof, isOnPlane, vec2uni)
+import Window.Plane exposing (Plane, isOnPlane)
+import Window.Utils exposing (addXof, addYof, vec2uni)
 
 
 type Boundary

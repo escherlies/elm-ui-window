@@ -13,8 +13,10 @@ import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBou
 import Window.Plane exposing (Plane)
 
 
-type alias Window =
-    Window.Plane.Plane
+type alias Window msg =
+    { plane : Plane
+    , render : Int -> Plane -> Element msg
+    }
 
 
 type Index
@@ -32,7 +34,7 @@ type Drag
 
 
 type alias Model =
-    { windows : Array Window
+    { planes : Array Plane
     , order : List Index
     , drag : Drag
     , mousePosition : Vec2
@@ -42,7 +44,7 @@ type alias Model =
 
 init : Model
 init =
-    { windows = Array.empty
+    { planes = Array.empty
     , order = []
     , drag = None
     , mousePosition = vec2 0 0
@@ -50,17 +52,17 @@ init =
     }
 
 
-initWith : List Window -> Model
+initWith : List Plane -> Model
 initWith windowElements =
     { init
-        | windows = Array.fromList windowElements
+        | planes = Array.fromList windowElements
         , order = List.map Index <| List.range 0 (List.length windowElements - 1)
     }
 
 
 empty : Model
 empty =
-    { windows = Array.empty
+    { planes = Array.empty
     , order = []
     , drag = None
     , mousePosition = vec2 0 0
@@ -87,7 +89,7 @@ update msg model =
                 , mouseOffset =
                     unwrap (vec2 0 0)
                         (\w -> sub w.position mp)
-                        (Array.get (unwrapIndex ix) model.windows)
+                        (Array.get (unwrapIndex ix) model.planes)
               }
             , Cmd.none
             )
@@ -98,7 +100,7 @@ update msg model =
         MouseMove mp ->
             ( { model
                 | mousePosition = mp
-                , windows = updateWindows model mp
+                , planes = updatePlanes model mp
               }
             , Cmd.none
             )
@@ -120,7 +122,7 @@ i_ fn a b =
 
 handlePointerDown : Model -> ( Model, Cmd msg )
 handlePointerDown model =
-    getWindowHitsIx model
+    getPlaneHitsIx model
         |> Maybe.map
             (\( ix, h ) ->
                 if model.drag == None then
@@ -149,31 +151,31 @@ handlePointerDown model =
 -- Handle moving and resizing
 
 
-updateWindows : Model -> Vec2 -> Array Window
-updateWindows model mp =
+updatePlanes : Model -> Vec2 -> Array Plane
+updatePlanes model mp =
     case model.drag of
         None ->
-            model.windows
+            model.planes
 
         Move (Index ix) ->
             let
                 targetWindow =
-                    Array.get ix model.windows
+                    Array.get ix model.planes
             in
             case targetWindow of
                 Just wp ->
                     Array.set ix
                         { wp | position = add mp model.mouseOffset }
-                        model.windows
+                        model.planes
 
                 Nothing ->
                     -- Should never happen
-                    model.windows
+                    model.planes
 
         Reszie (Index ix) corner ->
             let
                 targetWindow =
-                    Array.get ix model.windows
+                    Array.get ix model.planes
 
                 delta =
                     sub mp model.mousePosition
@@ -181,11 +183,11 @@ updateWindows model mp =
             case targetWindow of
                 Just wp ->
                     handleRezise wp corner delta
-                        |> (\w -> Array.set ix w model.windows)
+                        |> (\w -> Array.set ix w model.planes)
 
                 Nothing ->
                     -- Should never happen
-                    model.windows
+                    model.planes
 
 
 
@@ -230,27 +232,27 @@ centerOffset browserWindow window =
     scale 0.5 (sub browserWindow window)
 
 
-centerX : Vec2 -> Window -> Window
+centerX : Vec2 -> Plane -> Plane
 centerX browserWindow window =
     { window | position = setX (getX (centerOffset browserWindow window.size)) window.position }
 
 
-centerY : Vec2 -> Window -> Window
+centerY : Vec2 -> Plane -> Plane
 centerY browserWindow window =
     { window | position = setY (getY (centerOffset browserWindow window.size)) window.position }
 
 
-center : Vec2 -> Window -> Window
+center : Vec2 -> Plane -> Plane
 center browserWindow window =
     { window | position = centerOffset browserWindow window.size }
 
 
-bottomRight : Vec2 -> Window -> Window
+bottomRight : Vec2 -> Plane -> Plane
 bottomRight browserWindow window =
     { window | position = sub browserWindow window.size }
 
 
-bottom : Vec2 -> Window -> Window
+bottom : Vec2 -> Plane -> Plane
 bottom browserWindow window =
     { window
         | position =
@@ -259,23 +261,23 @@ bottom browserWindow window =
     }
 
 
-move : Vec2 -> Window -> Window
+move : Vec2 -> Plane -> Plane
 move v window =
     { window
         | position = add v window.position
     }
 
 
-getWindowHits : Model -> Maybe Hit
-getWindowHits model =
+getPlaneHits : Model -> Maybe Hit
+getPlaneHits model =
     sortedByOrder model
         |> List.map Tuple.second
         |> List.map (getHit defaultTolerance model.mousePosition)
         |> List.Extra.findMap identity
 
 
-getWindowHitsIx : Model -> Maybe ( Index, Hit )
-getWindowHitsIx model =
+getPlaneHitsIx : Model -> Maybe ( Index, Hit )
+getPlaneHitsIx model =
     sortedByOrder model
         |> List.Extra.findMap
             (\( ix, w ) ->
@@ -329,7 +331,7 @@ getCursor mh =
 -- View
 
 
-view : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> Element msg
+view : (Msg -> msg) -> Model -> List (Int -> Plane -> Element msg) -> Element msg
 view toMsg model windowsContent =
     el
         ([ width fill
@@ -352,7 +354,7 @@ view toMsg model windowsContent =
                 )
             )
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
-         , cursor <| getCursor (getWindowHits model)
+         , cursor <| getCursor (getPlaneHits model)
          ]
             ++ renderWindows model windowsContent
          -- -- Debug
@@ -364,7 +366,7 @@ view toMsg model windowsContent =
         Element.none
 
 
-renderWindows : Model -> List (Int -> Window -> Element msg) -> List (Attribute msg)
+renderWindows : Model -> List (Int -> Plane -> Element msg) -> List (Attribute msg)
 renderWindows model elements =
     let
         focusedIndex =
@@ -376,7 +378,7 @@ renderWindows model elements =
     List.map (viewWindow model) window
 
 
-getRenderElement : Index -> ( Index, ZIndex, Window ) -> (Int -> Window -> Element msg) -> RenderWindow msg
+getRenderElement : Index -> ( Index, ZIndex, Plane ) -> (Int -> Plane -> Element msg) -> WindowRender msg
 getRenderElement focusedIndex ( index, zindex, window ) render =
     { index = index
     , zIndex = zindex
@@ -386,18 +388,18 @@ getRenderElement focusedIndex ( index, zindex, window ) render =
     }
 
 
-type alias RenderWindow msg =
+type alias WindowRender msg =
     { index : Index
     , zIndex : ZIndex
-    , window : Window
+    , window : Plane
     , isFocused : Bool
-    , render : Int -> Window -> Element msg
+    , render : Int -> Plane -> Element msg
     }
 
 
 viewWindow :
     Model
-    -> RenderWindow msg
+    -> WindowRender msg
     -> Element.Attribute msg
 viewWindow model { index, zIndex, window, isFocused, render } =
     Element.inFront
@@ -485,22 +487,22 @@ getOrder listOfIndex =
         |> List.map Tuple.first
 
 
-withOrder : Model -> List ( ZIndex, Window )
+withOrder : Model -> List ( ZIndex, Plane )
 withOrder m =
     List.Extra.zip
         (getOrder m.order)
-        (toList m.windows)
+        (toList m.planes)
 
 
-withOrderIndexed : Model -> List ( Index, ZIndex, Window )
+withOrderIndexed : Model -> List ( Index, ZIndex, Plane )
 withOrderIndexed m =
     List.Extra.zip
         (getOrder m.order)
-        (toList m.windows)
+        (toList m.planes)
         |> List.indexedMap (\ix ( zindex, window ) -> ( Index ix, zindex, window ))
 
 
-sortedByOrder : Model -> List ( Index, Window )
+sortedByOrder : Model -> List ( Index, Plane )
 sortedByOrder m =
     withOrder m
         |> List.indexedMap (\ix ( zix, w ) -> ( Index ix, zix, w ))
