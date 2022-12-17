@@ -290,8 +290,8 @@ getCursor mh =
 -- View
 
 
-view : (Msg -> msg) -> Model -> List (Int -> Plane -> Element msg) -> Element msg
-view toMsg model windowsContent =
+view : (Msg -> msg) -> Model -> List (Window msg) -> Element msg
+view toMsg model windows =
     el
         ([ width fill
          , height fill
@@ -315,7 +315,7 @@ view toMsg model windowsContent =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getPlaneHits model)
          ]
-            ++ renderWindows model windowsContent
+            ++ renderWindows model (List.map .render windows)
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -344,7 +344,7 @@ renderWindows model elements =
 type alias WindowRender msg =
     { index : Index
     , zIndex : ZIndex
-    , window : Plane
+    , plane : Plane
     , isFocused : Bool
     , render : Int -> Plane -> Element msg
     }
@@ -354,7 +354,7 @@ getRenderElement : Index -> ( Index, ZIndex, Plane ) -> (Int -> Plane -> Element
 getRenderElement focusedIndex ( index, zindex, window ) render =
     { index = index
     , zIndex = zindex
-    , window = window
+    , plane = window
     , isFocused = focusedIndex == index
     , render = render
     }
@@ -364,24 +364,24 @@ viewWindow :
     Model
     -> WindowRender msg
     -> Element.Attribute msg
-viewWindow model { index, zIndex, window, isFocused, render } =
+viewWindow model { index, zIndex, plane, isFocused, render } =
     Element.inFront
         (el
-            ([ Element.moveRight (getX window.position)
-             , Element.moveDown (getY window.position)
-             , height (px <| round <| getY window.size)
-             , width (px <| round <| getX window.size)
+            ([ Element.moveRight (getX plane.position)
+             , Element.moveDown (getY plane.position)
+             , height (px <| round <| getY plane.size)
+             , width (px <| round <| getX plane.size)
              , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| unwrapZindex zIndex * 10))
              ]
                 ++ userSelect (model.drag == None && isFocused)
             )
          <|
-            render (unwrapIndex index) window
+            render (unwrapIndex index) plane
         )
 
 
 showBoundaries : Vec2 -> ZIndex -> Plane -> List (Attribute msg)
-showBoundaries tol (ZIndex zindex) window =
+showBoundaries tol (ZIndex zindex) plane =
     List.indexedMap
         (\ix b ->
             Element.inFront
@@ -406,7 +406,7 @@ showBoundaries tol (ZIndex zindex) window =
                     Element.none
                 )
         )
-        (getBoundaries window tol)
+        (getBoundaries plane tol)
 
 
 
