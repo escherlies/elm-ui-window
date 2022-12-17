@@ -7,7 +7,7 @@ import Html.Attributes exposing (style)
 import Html.Events
 import Json.Decode as D exposing (index)
 import List.Extra
-import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
+import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, getHit, handleRezise)
 import Window.Plane exposing (Plane)
@@ -227,47 +227,6 @@ userSelect val =
 -- Helpers
 
 
-centerOffset : Vec2 -> Vec2 -> Vec2
-centerOffset browserWindow window =
-    scale 0.5 (sub browserWindow window)
-
-
-centerX : Vec2 -> Plane -> Plane
-centerX browserWindow window =
-    { window | position = setX (getX (centerOffset browserWindow window.size)) window.position }
-
-
-centerY : Vec2 -> Plane -> Plane
-centerY browserWindow window =
-    { window | position = setY (getY (centerOffset browserWindow window.size)) window.position }
-
-
-center : Vec2 -> Plane -> Plane
-center browserWindow window =
-    { window | position = centerOffset browserWindow window.size }
-
-
-bottomRight : Vec2 -> Plane -> Plane
-bottomRight browserWindow window =
-    { window | position = sub browserWindow window.size }
-
-
-bottom : Vec2 -> Plane -> Plane
-bottom browserWindow window =
-    { window
-        | position =
-            vec2 (getX window.position)
-                (getY (sub browserWindow window.size))
-    }
-
-
-move : Vec2 -> Plane -> Plane
-move v window =
-    { window
-        | position = add v window.position
-    }
-
-
 getPlaneHits : Model -> Maybe Hit
 getPlaneHits model =
     sortedByOrder model
@@ -378,14 +337,8 @@ renderWindows model elements =
     List.map (viewWindow model) window
 
 
-getRenderElement : Index -> ( Index, ZIndex, Plane ) -> (Int -> Plane -> Element msg) -> WindowRender msg
-getRenderElement focusedIndex ( index, zindex, window ) render =
-    { index = index
-    , zIndex = zindex
-    , window = window
-    , isFocused = focusedIndex == index
-    , render = render
-    }
+
+-- Window Elements
 
 
 type alias WindowRender msg =
@@ -394,6 +347,16 @@ type alias WindowRender msg =
     , window : Plane
     , isFocused : Bool
     , render : Int -> Plane -> Element msg
+    }
+
+
+getRenderElement : Index -> ( Index, ZIndex, Plane ) -> (Int -> Plane -> Element msg) -> WindowRender msg
+getRenderElement focusedIndex ( index, zindex, window ) render =
+    { index = index
+    , zIndex = zindex
+    , window = window
+    , isFocused = focusedIndex == index
+    , render = render
     }
 
 
@@ -455,16 +418,6 @@ isFocusedIndex (Index a) (Index b) =
     a == b
 
 
-curry : ( a, b ) -> (a -> b -> c) -> c
-curry ( a, b ) fn =
-    fn a b
-
-
-composey : (a -> a -> b) -> (c -> a) -> c -> c -> b
-composey f g x y =
-    f (g x) (g y)
-
-
 unwrapIndex : Index -> Int
 unwrapIndex (Index ix) =
     ix
@@ -489,16 +442,12 @@ getOrder listOfIndex =
 
 withOrder : Model -> List ( ZIndex, Plane )
 withOrder m =
-    List.Extra.zip
-        (getOrder m.order)
-        (toList m.planes)
+    List.Extra.zip (getOrder m.order) (toList m.planes)
 
 
 withOrderIndexed : Model -> List ( Index, ZIndex, Plane )
 withOrderIndexed m =
-    List.Extra.zip
-        (getOrder m.order)
-        (toList m.planes)
+    List.Extra.zip (getOrder m.order) (toList m.planes)
         |> List.indexedMap (\ix ( zindex, window ) -> ( Index ix, zindex, window ))
 
 
@@ -509,8 +458,3 @@ sortedByOrder m =
         |> List.sortBy (\( _, ZIndex zix, _ ) -> zix)
         |> List.map (\( ix, _, w ) -> ( ix, w ))
         |> List.reverse
-
-
-uncurry : (a -> b -> c) -> ( a, b ) -> c
-uncurry fn ( a, b ) =
-    fn a b
