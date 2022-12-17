@@ -1,17 +1,17 @@
-module Window.Area exposing (..)
+module Window.Plane exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
-import Window.Extra exposing (w)
+import Window.Utils exposing (callTwice)
 
 
-type alias Area =
+type alias Plane =
     { position : Vec2
     , size : Vec2
     }
 
 
-isInArea : Area -> Vec2 -> Bool
-isInArea { position, size } v =
+isOnPlane : Plane -> Vec2 -> Bool
+isOnPlane { position, size } v =
     vec2lt position v && vec2lt v (add position size)
 
 
@@ -35,7 +35,7 @@ addYof =
 
 vec2uni : Float -> Vec2
 vec2uni =
-    w vec2
+    callTwice vec2
 
 
 zero : Vec2

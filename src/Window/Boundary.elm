@@ -1,7 +1,7 @@
 module Window.Boundary exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
-import Window.Area exposing (Area, addXof, addYof, isInArea, vec2uni)
+import Window.Plane exposing (Plane, addXof, addYof, isOnPlane, vec2uni)
 
 
 type Boundary
@@ -24,9 +24,9 @@ type Hit
     | HitBoundary Boundary
 
 
-getHit : Vec2 -> Vec2 -> Area -> Maybe Hit
+getHit : Vec2 -> Vec2 -> Plane -> Maybe Hit
 getHit tol mp w =
-    if isInArea (withTolerance tol w) mp then
+    if isOnPlane (withTolerance tol w) mp then
         Maybe.map HitBoundary (hitBoundary w tol mp)
             |> Maybe.withDefault HitArea
             |> Just
@@ -39,11 +39,11 @@ getHit tol mp w =
 -- Check boundary
 
 
-hitBoundary : Area -> Vec2 -> Vec2 -> Maybe Boundary
+hitBoundary : Plane -> Vec2 -> Vec2 -> Maybe Boundary
 hitBoundary w tol mp =
     let
         isAt areaFn =
-            isInArea (areaFn w tol) mp
+            isOnPlane (areaFn w tol) mp
     in
     if isAt topLeft then
         Just TopLeft
@@ -77,7 +77,7 @@ hitBoundary w tol mp =
 --
 
 
-withTolerance : Vec2 -> Area -> Area
+withTolerance : Vec2 -> Plane -> Plane
 withTolerance tol { position, size } =
     { position = sub position tol
     , size = add size (cornerSize tol)
@@ -98,28 +98,28 @@ cornerSize tol =
 -- Corners
 
 
-topLeft : Area -> Vec2 -> Area
+topLeft : Plane -> Vec2 -> Plane
 topLeft w tol =
     { position = sub w.position tol
     , size = cornerSize tol
     }
 
 
-topRight : Area -> Vec2 -> Area
+topRight : Plane -> Vec2 -> Plane
 topRight w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol
     }
 
 
-bottomLeft : Area -> Vec2 -> Area
+bottomLeft : Plane -> Vec2 -> Plane
 bottomLeft w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol
     }
 
 
-bottomRight : Area -> Vec2 -> Area
+bottomRight : Plane -> Vec2 -> Plane
 bottomRight w tol =
     { position = sub w.position tol |> add w.size
     , size = cornerSize tol
@@ -130,28 +130,28 @@ bottomRight w tol =
 -- Edges
 
 
-top : Area -> Vec2 -> Area
+top : Plane -> Vec2 -> Plane
 top w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addXof w.size
     }
 
 
-bottom : Area -> Vec2 -> Area
+bottom : Plane -> Vec2 -> Plane
 bottom w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol |> addXof w.size
     }
 
 
-left : Area -> Vec2 -> Area
+left : Plane -> Vec2 -> Plane
 left w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addYof w.size
     }
 
 
-right : Area -> Vec2 -> Area
+right : Plane -> Vec2 -> Plane
 right w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol |> addYof w.size
@@ -167,7 +167,7 @@ right w tol =
 Maybe helpful to display boundaries for debugging
 
 -}
-getBoundaries : Area -> Vec2 -> List Area
+getBoundaries : Plane -> Vec2 -> List Plane
 getBoundaries w tol =
     [ top w tol
     , bottom w tol
@@ -186,7 +186,7 @@ getBoundaries w tol =
 
 {-| Add the delta of the movement to the window
 -}
-handleRezise : Area -> Boundary -> Vec2 -> Area
+handleRezise : Plane -> Boundary -> Vec2 -> Plane
 handleRezise wp corner delta =
     (case corner of
         Bottom ->

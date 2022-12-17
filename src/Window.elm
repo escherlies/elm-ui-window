@@ -9,12 +9,12 @@ import Json.Decode as D exposing (index)
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
-import Window.Area exposing (Area)
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, getHit, handleRezise)
+import Window.Plane exposing (Plane)
 
 
 type alias Window =
-    Window.Area.Area
+    Window.Plane.Plane
 
 
 type Index
@@ -415,7 +415,7 @@ viewWindow model { index, zIndex, window, isFocused, render } =
         )
 
 
-showBoundaries : Vec2 -> ZIndex -> Area -> List (Attribute msg)
+showBoundaries : Vec2 -> ZIndex -> Plane -> List (Attribute msg)
 showBoundaries tol (ZIndex zindex) window =
     List.indexedMap
         (\ix b ->
