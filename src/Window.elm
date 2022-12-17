@@ -52,10 +52,10 @@ init =
     }
 
 
-initWith : List Plane -> Model
+initWith : List (Window msg) -> Model
 initWith windowElements =
     { init
-        | planes = Array.fromList windowElements
+        | planes = Array.fromList <| List.map .plane windowElements
         , order = List.map Index <| List.range 0 (List.length windowElements - 1)
     }
 
