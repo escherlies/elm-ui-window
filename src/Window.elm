@@ -5,7 +5,7 @@ import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribu
 import Element.Border
 import Html.Attributes exposing (style)
 import Html.Events
-import Json.Decode as D
+import Json.Decode as D exposing (index)
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
@@ -17,28 +17,44 @@ type alias Window =
     Window.Area.Area
 
 
+type Index
+    = Index Int
+
+
+type ZIndex
+    = ZIndex Int
+
+
 type Drag
     = None
-    | Reszie Int Boundary
-    | Move Int
+    | Reszie Index Boundary
+    | Move Index
 
 
 type alias Model =
     { windows : Array Window
-    , order : List Int
+    , order : List Index
     , drag : Drag
     , mousePosition : Vec2
     , mouseOffset : Vec2
     }
 
 
-init : List Window -> Model
-init windowElements =
-    { windows = Array.fromList windowElements
-    , order = List.range 0 (List.length windowElements - 1)
+init : Model
+init =
+    { windows = Array.empty
+    , order = []
     , drag = None
     , mousePosition = vec2 0 0
     , mouseOffset = vec2 0 0
+    }
+
+
+initWith : List Window -> Model
+initWith windowElements =
+    { init
+        | windows = Array.fromList windowElements
+        , order = List.map Index <| List.range 0 (List.length windowElements - 1)
     }
 
 
@@ -53,7 +69,7 @@ empty =
 
 
 type Msg
-    = TrackWindow Int Vec2
+    = TrackWindow Index Vec2
     | StopTrackWindow
     | PointerDown
     | MouseMove Vec2
@@ -71,7 +87,7 @@ update msg model =
                 , mouseOffset =
                     unwrap (vec2 0 0)
                         (\w -> sub w.position mp)
-                        (Array.get ix model.windows)
+                        (Array.get (unwrapIndex ix) model.windows)
               }
             , Cmd.none
             )
@@ -88,13 +104,18 @@ update msg model =
             )
 
 
-focusIx : a -> List a -> List a
-focusIx ix o =
-    o
-        -- Add selected item to end of stack
-        |> (\zis -> zis ++ [ ix ])
-        -- Uniq
-        |> List.Extra.remove ix
+takeAndAppend : a -> List a -> List a
+takeAndAppend x xs =
+    xs
+        -- Remove x from the list
+        |> List.Extra.remove x
+        -- Append x to the end
+        |> i_ (++) [ x ]
+
+
+i_ : (c -> b -> a) -> b -> c -> a
+i_ fn a b =
+    fn b a
 
 
 handlePointerDown : Model -> ( Model, Cmd msg )
@@ -111,13 +132,13 @@ handlePointerDown model =
 
                                 HitBoundary b ->
                                     Reszie ix b
-                        , order = focusIx ix model.order
+                        , order = takeAndAppend ix model.order
                     }
 
                 else
                     { model
                         | order =
-                            focusIx ix model.order
+                            takeAndAppend ix model.order
                     }
             )
         |> Maybe.map (\m -> ( m, Cmd.none ))
@@ -134,7 +155,7 @@ updateWindows model mp =
         None ->
             model.windows
 
-        Move ix ->
+        Move (Index ix) ->
             let
                 targetWindow =
                     Array.get ix model.windows
@@ -149,7 +170,7 @@ updateWindows model mp =
                     -- Should never happen
                     model.windows
 
-        Reszie ix corner ->
+        Reszie (Index ix) corner ->
             let
                 targetWindow =
                     Array.get ix model.windows
@@ -309,7 +330,7 @@ getCursor mh =
 
 
 view : (Msg -> msg) -> Model -> List (Int -> Window -> Element msg) -> Element msg
-view toMsg model windowElements =
+view toMsg model windowsContent =
     el
         ([ width fill
          , height fill
@@ -333,7 +354,7 @@ view toMsg model windowElements =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getWindowHits model)
          ]
-            ++ renderWindows model windowElements
+            ++ renderWindows model windowsContent
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -344,43 +365,58 @@ view toMsg model windowElements =
 
 
 renderWindows : Model -> List (Int -> Window -> Element msg) -> List (Attribute msg)
-renderWindows model windowElements =
+renderWindows model elements =
     let
-        zipped =
-            List.Extra.zip
-                (withOrder model)
-                windowElements
-
         focusedIndex =
-            Maybe.withDefault 0 (List.Extra.last model.order)
+            Maybe.withDefault (Index 0) (List.Extra.last model.order)
+
+        window =
+            List.map2 (getRenderElement focusedIndex) (withOrderIndexed model) elements
     in
-    List.indexedMap (viewElement model focusedIndex) zipped
+    List.map (viewWindow model) window
 
 
-viewElement :
+getRenderElement : Index -> ( Index, ZIndex, Window ) -> (Int -> Window -> Element msg) -> RenderWindow msg
+getRenderElement focusedIndex ( index, zindex, window ) render =
+    { index = index
+    , zIndex = zindex
+    , window = window
+    , isFocused = focusedIndex == index
+    , render = render
+    }
+
+
+type alias RenderWindow msg =
+    { index : Index
+    , zIndex : ZIndex
+    , window : Window
+    , isFocused : Bool
+    , render : Int -> Window -> Element msg
+    }
+
+
+viewWindow :
     Model
-    -> Int -- Focused element
-    -> Int
-    -> ( ( Int, Window ), Int -> Window -> Element msg )
+    -> RenderWindow msg
     -> Element.Attribute msg
-viewElement model focusedIndex ix ( ( zindex, window ), renderElement ) =
+viewWindow model { index, zIndex, window, isFocused, render } =
     Element.inFront
         (el
             ([ Element.moveRight (getX window.position)
              , Element.moveDown (getY window.position)
              , height (px <| round <| getY window.size)
              , width (px <| round <| getX window.size)
-             , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10))
+             , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| unwrapZindex zIndex * 10))
              ]
-                ++ userSelect (model.drag == None && focusedIndex == ix)
+                ++ userSelect (model.drag == None && isFocused)
             )
          <|
-            renderElement ix window
+            render (unwrapIndex index) window
         )
 
 
-showBoundaries : Vec2 -> Int -> Area -> List (Attribute msg)
-showBoundaries tol zindex window =
+showBoundaries : Vec2 -> ZIndex -> Area -> List (Attribute msg)
+showBoundaries tol (ZIndex zindex) window =
     List.indexedMap
         (\ix b ->
             Element.inFront
@@ -408,22 +444,45 @@ showBoundaries tol zindex window =
         (getBoundaries window tol)
 
 
+
+-- Helpers
+
+
+isFocusedIndex : Index -> Index -> Bool
+isFocusedIndex (Index a) (Index b) =
+    a == b
+
+
+curry : ( a, b ) -> (a -> b -> c) -> c
+curry ( a, b ) fn =
+    fn a b
+
+
+composey : (a -> a -> b) -> (c -> a) -> c -> c -> b
+composey f g x y =
+    f (g x) (g y)
+
+
+unwrapIndex : Index -> Int
+unwrapIndex (Index ix) =
+    ix
+
+
+unwrapZindex : ZIndex -> Int
+unwrapZindex (ZIndex zix) =
+    zix
+
+
 getOrder : List Index -> List ZIndex
 getOrder listOfIndex =
     listOfIndex
-        |> List.indexedMap (\zIndex index -> ( zIndex, index ))
+        -- The index of this list is the zIndex
+        |> List.indexedMap Tuple.pair
+        |> List.map (Tuple.mapFirst ZIndex)
         -- Sort by index so we can zip this with our window elements again
-        |> List.sortBy Tuple.second
+        |> List.sortBy (unwrapIndex << Tuple.second)
         -- Get z index
         |> List.map Tuple.first
-
-
-type alias Index =
-    Int
-
-
-type alias ZIndex =
-    Int
 
 
 withOrder : Model -> List ( ZIndex, Window )
@@ -433,11 +492,19 @@ withOrder m =
         (toList m.windows)
 
 
+withOrderIndexed : Model -> List ( Index, ZIndex, Window )
+withOrderIndexed m =
+    List.Extra.zip
+        (getOrder m.order)
+        (toList m.windows)
+        |> List.indexedMap (\ix ( zindex, window ) -> ( Index ix, zindex, window ))
+
+
 sortedByOrder : Model -> List ( Index, Window )
 sortedByOrder m =
     withOrder m
-        |> List.indexedMap (\ix ( zix, w ) -> ( ix, zix, w ))
-        |> List.sortBy (\( _, zix, _ ) -> zix)
+        |> List.indexedMap (\ix ( zix, w ) -> ( Index ix, zix, w ))
+        |> List.sortBy (\( _, ZIndex zix, _ ) -> zix)
         |> List.map (\( ix, _, w ) -> ( ix, w ))
         |> List.reverse
 
