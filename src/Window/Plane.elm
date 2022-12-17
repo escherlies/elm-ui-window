@@ -1,7 +1,7 @@
 module Window.Plane exposing (..)
 
-import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub, vec2)
-import Window.Utils exposing (vec2lt)
+import Math.Vector2 exposing (Vec2, add, scale, setX, setY, sub, vec2)
+import Window.Utils exposing (compose12L, setXof, setYof, vec2lt)
 
 
 type alias Plane =
@@ -15,40 +15,97 @@ isOnPlane { position, size } v =
     vec2lt position v && vec2lt v (add position size)
 
 
+move : Vec2 -> Plane -> Plane
+move delta p =
+    { p | position = add delta p.position }
+
+
+moveTo : Vec2 -> Plane -> Plane
+moveTo pos p =
+    { p | position = pos }
+
+
+setPosition : Vec2 -> Plane -> Plane
+setPosition =
+    moveTo
+
+
+setSize : Plane -> Vec2 -> Plane
+setSize p size =
+    { p | size = size }
+
+
+
+-- Positioning
+
+
+centerX : Vec2 -> Plane -> Plane
+centerX viewport p =
+    { p | position = setXof (centerOffset viewport p.size) p.position }
+
+
+centerY : Vec2 -> Plane -> Plane
+centerY viewport p =
+    { p | position = setYof (centerOffset viewport p.size) p.position }
+
+
+center : Vec2 -> Plane -> Plane
+center viewport p =
+    { p | position = centerOffset viewport p.size }
+
+
 
 --
 
 
-centerOffset : Vec2 -> Vec2 -> Vec2
-centerOffset viewport window =
-    scale 0.5 (sub viewport window)
+top : Plane -> Plane
+top p =
+    { p | position = setY 0 p.position }
 
 
-centerX : Vec2 -> Plane -> Plane
-centerX viewport window =
-    { window | position = setX (getX (centerOffset viewport window.size)) window.position }
-
-
-centerY : Vec2 -> Plane -> Plane
-centerY viewport window =
-    { window | position = setY (getY (centerOffset viewport window.size)) window.position }
-
-
-center : Vec2 -> Plane -> Plane
-center viewport window =
-    { window | position = centerOffset viewport window.size }
-
-
-bottomRight : Vec2 -> Plane -> Plane
-bottomRight viewport window =
-    { window | position = sub viewport window.size }
+left : Plane -> Plane
+left p =
+    { p | position = setX 0 p.position }
 
 
 bottom : Vec2 -> Plane -> Plane
-bottom viewport window =
-    { window | position = vec2 (getX window.position) (getY (sub viewport window.size)) }
+bottom viewport p =
+    { p | position = setYof (sub viewport p.size) p.position }
 
 
-move : Vec2 -> Plane -> Plane
-move v window =
-    { window | position = add v window.position }
+right : Vec2 -> Plane -> Plane
+right viewport p =
+    { p | position = setXof (sub viewport p.size) p.position }
+
+
+
+--
+
+
+bottomRight : Vec2 -> Plane -> Plane
+bottomRight viewport p =
+    { p | position = sub viewport p.size }
+
+
+bottomLeft : Vec2 -> Plane -> Plane
+bottomLeft =
+    compose12L left bottom
+
+
+topRight : Vec2 -> Plane -> Plane
+topRight =
+    compose12L top right
+
+
+topLeft : { a | position : Vec2 } -> { a | position : Vec2 }
+topLeft p =
+    { p | position = vec2 0 0 }
+
+
+
+-- Helpers
+
+
+centerOffset : Vec2 -> Vec2 -> Vec2
+centerOffset viewport plane =
+    scale 0.5 (sub viewport plane)

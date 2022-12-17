@@ -7,6 +7,26 @@ import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
 -- Vector helpers
 
 
+{-|
+
+    setX (getX a) b
+
+-}
+setXof : Vec2 -> Vec2 -> Vec2
+setXof =
+    setX << getX
+
+
+{-|
+
+    setX (getX a) b
+
+-}
+setYof : Vec2 -> Vec2 -> Vec2
+setYof =
+    setY << getY
+
+
 {-| Add only the x component of a to b
 -}
 addXof : Vec2 -> Vec2 -> Vec2
@@ -53,3 +73,10 @@ Also known as Warbler (`λab.abb`)
 callTwice : (a -> a -> b) -> a -> b
 callTwice a b =
     a b b
+
+
+{-| Compose 1˚ <- 2˚, also known as B1 or Blackbird combinator
+-}
+compose12L : (a -> b) -> (c -> d -> a) -> c -> d -> b
+compose12L =
+    (<<) << (<<)
