@@ -16,7 +16,7 @@ import Window.Utils exposing (flip)
 
 type alias Window msg =
     { plane : Plane
-    , render : (Int -> Vec2 -> msg) -> Int -> Plane -> Element msg
+    , render : (Msg -> msg) -> Int -> Plane -> Element msg
     }
 
 
@@ -316,7 +316,7 @@ view toMsg model windows =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getPlaneHits model)
          ]
-            ++ renderWindows model (List.map (flip (trackWindow toMsg) << .render) windows)
+            ++ renderWindows model (List.map (flip toMsg << .render) windows)
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -329,6 +329,19 @@ view toMsg model windows =
 trackWindow : (Msg -> msg) -> Int -> Vec2 -> msg
 trackWindow toMsg ix =
     toMsg << TrackWindow (Index ix)
+
+
+trackWindowAttr : (Msg -> msg) -> Int -> Attribute msg
+trackWindowAttr toMsg ix =
+    htmlAttribute
+        (Html.Events.on "pointerdown"
+            (D.map (trackWindow toMsg ix)
+                (D.map2 vec2
+                    (D.field "clientX" D.float)
+                    (D.field "clientY" D.float)
+                )
+            )
+        )
 
 
 renderWindows : Model -> List (Int -> Plane -> Element msg) -> List (Attribute msg)
