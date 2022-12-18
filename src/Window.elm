@@ -59,10 +59,15 @@ init =
 
 
 initWith : List (Window msg) -> Model
-initWith windowElements =
-    { init
-        | planes = Array.fromList <| List.map .plane windowElements
-        , order = List.map Index <| List.range 0 (List.length windowElements - 1)
+initWith =
+    updatePlanes_ init << List.map .plane
+
+
+updatePlanes_ : Model -> List Plane -> Model
+updatePlanes_ model planes =
+    { model
+        | planes = Array.fromList planes
+        , order = List.map Index <| List.range 0 (List.length planes - 1)
     }
 
 
@@ -81,11 +86,17 @@ type Msg
     | StopTrackWindow
     | PointerDown
     | MouseMove Vec2
+    | UpdatePlanes (List Plane)
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
+        UpdatePlanes ws ->
+            ( updatePlanes_ model ws
+            , Cmd.none
+            )
+
         PointerDown ->
             handlePointerDown model
 
