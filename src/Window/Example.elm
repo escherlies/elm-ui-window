@@ -12,11 +12,14 @@ import Window exposing (onDrag)
 
    Put some draggable, resizeable rectangles to your UI!
 
+   ![](docs/Screenshot.f2a687b.png)
+
    # Use cases
 
    - A UI with window elements, i.e. [https://binaryplease.com/](https://binaryplease.com/)
-   - As a core package to place areas on a map, as we use it in [https://www.hyhyve.com/](https://www.hyhyve.com/)
+   - As a core package to work with resizable elements, as used in our map customizer at [https://www.hyhyve.com/](https://www.hyhyve.com/)
    - A website builder
+   - Rendering flow charts
 
    # Usage
 
@@ -94,7 +97,7 @@ windows =
 {- # Advanced usage
 
    In the simple example we ignored three params of the render function.
-   These three params actually are: `toMsg`,`index`, and `plane`. Let's see
+   These three params actually are: `toMsg`, `index`, and `plane`. Let's see
    how we can use them to create advanced views:
 -}
 
