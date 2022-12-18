@@ -1,6 +1,20 @@
 module Window.Utils exposing (..)
 
+import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
+
+
+
+--
+
+
+takeAndAppend : a -> List a -> List a
+takeAndAppend x xs =
+    xs
+        -- Remove x from the list
+        |> List.Extra.remove x
+        -- Append x to the end
+        |> i_ (++) [ x ]
 
 
 
@@ -65,9 +79,24 @@ vec2order order a b =
 -- Combinators
 
 
-flip : a -> (a -> b) -> b
-flip a b =
-    b a
+apply : a -> (a -> b) -> b
+apply =
+    (|>)
+
+
+{-| Just an idea...
+
+See <https://gist.github.com/escherlies/de92514ecdc295f0a098d41609d8677a>
+
+-}
+i_ : (c -> b -> a) -> b -> c -> a
+i_ =
+    flip
+
+
+flip : (c -> b -> a) -> b -> c -> a
+flip fn a b =
+    fn b a
 
 
 {-| Call a function `f` twice with an argument `x`.

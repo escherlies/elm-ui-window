@@ -1,28 +1,23 @@
-module Window exposing (..)
+module Window exposing (Model, Msg, Window, init, initWith, mapPlane, onDrag, update, updatePlanes, view)
 
 import Array exposing (Array, toList)
-import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, rgb, width)
-import Element.Border
-import Html.Attributes exposing (style)
+import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
+import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (index)
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
-import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, getHit, handleRezise)
+import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
+import Window.Elements exposing (cursor, userSelect)
 import Window.Plane exposing (Plane)
-import Window.Utils exposing (flip)
+import Window.Utils exposing (apply,  takeAndAppend)
 
 
 type alias Window msg =
     { plane : Plane
     , render : (Msg -> msg) -> Int -> Plane -> Element msg
     }
-
-
-mapPlane : (Plane -> Plane) -> Window msg -> Window msg
-mapPlane fn w =
-    { w | plane = fn w.plane }
 
 
 type Index
@@ -60,25 +55,17 @@ init =
 
 initWith : List (Window msg) -> Model
 initWith =
-    updatePlanes_ init << List.map .plane
+    handleUpdatePlanes init << List.map .plane
 
 
-updatePlanes_ : Model -> List Plane -> Model
-updatePlanes_ model planes =
-    { model
-        | planes = Array.fromList planes
-        , order = List.map Index <| List.range 0 (List.length planes - 1)
-    }
+{-| Update your windows if you need to. Use it like
 
+    updatePlanes (List.map .plane windows)
 
-empty : Model
-empty =
-    { planes = Array.empty
-    , order = []
-    , drag = None
-    , mousePosition = vec2 0 0
-    , mouseOffset = vec2 0 0
-    }
+-}
+updatePlanes : List Plane -> Msg
+updatePlanes =
+    UpdatePlanes
 
 
 type Msg
@@ -93,7 +80,7 @@ update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
         UpdatePlanes ws ->
-            ( updatePlanes_ model ws
+            ( handleUpdatePlanes model ws
             , Cmd.none
             )
 
@@ -117,24 +104,18 @@ update msg model =
         MouseMove mp ->
             ( { model
                 | mousePosition = mp
-                , planes = updatePlanes model mp
+                , planes = manipulatePlanes model mp
               }
             , Cmd.none
             )
 
 
-takeAndAppend : a -> List a -> List a
-takeAndAppend x xs =
-    xs
-        -- Remove x from the list
-        |> List.Extra.remove x
-        -- Append x to the end
-        |> i_ (++) [ x ]
-
-
-i_ : (c -> b -> a) -> b -> c -> a
-i_ fn a b =
-    fn b a
+handleUpdatePlanes : Model -> List Plane -> Model
+handleUpdatePlanes model planes =
+    { model
+        | planes = Array.fromList planes
+        , order = List.map Index <| List.range 0 (List.length planes - 1)
+    }
 
 
 handlePointerDown : Model -> ( Model, Cmd msg )
@@ -168,8 +149,8 @@ handlePointerDown model =
 -- Handle moving and resizing
 
 
-updatePlanes : Model -> Vec2 -> Array Plane
-updatePlanes model mp =
+manipulatePlanes : Model -> Vec2 -> Array Plane
+manipulatePlanes model mp =
     case model.drag of
         None ->
             model.planes
@@ -205,39 +186,6 @@ updatePlanes model mp =
                 Nothing ->
                     -- Should never happen
                     model.planes
-
-
-
---
-
-
-cursor : String -> Attribute msg
-cursor c =
-    htmlAttribute (Html.Attributes.style "cursor" c)
-
-
-pointerEventsNone : Attribute msg
-pointerEventsNone =
-    htmlAttribute (Html.Attributes.style "pointer-events" "none")
-
-
-pointerEventsAuto : Attribute msg
-pointerEventsAuto =
-    htmlAttribute (Html.Attributes.style "pointer-events" "auto")
-
-
-userSelect : Bool -> List (Element.Attribute msg)
-userSelect val =
-    if val then
-        []
-
-    else
-        [ Element.htmlAttribute (style "user-select" "none")
-        , Element.htmlAttribute (style "-ms-user-select" "none")
-        , Element.htmlAttribute (style "-moz-user-select" "none")
-        , Element.htmlAttribute (style "-webkit-user-select" "none")
-        , Element.htmlAttribute (style "-webkit-touch-callout" "none")
-        ]
 
 
 
@@ -332,7 +280,7 @@ view toMsg model windows =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getPlaneHits model)
          ]
-            ++ renderWindows model (List.map (flip toMsg << .render) windows)
+            ++ renderWindows model (List.map (apply toMsg << .render) windows)
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -347,8 +295,13 @@ trackWindow toMsg ix =
     toMsg << TrackWindow (Index ix)
 
 
-trackWindowAttr : (Msg -> msg) -> Int -> Attribute msg
-trackWindowAttr toMsg ix =
+{-| Use this in you render element to allow for dragging.
+
+For example, use this as an attribute to your window header/title bar to drag the windows around.
+
+-}
+onDrag : (Msg -> msg) -> Int -> Attribute msg
+onDrag toMsg ix =
     htmlAttribute
         (Html.Events.on "pointerdown"
             (D.map (trackWindow toMsg ix)
@@ -415,42 +368,8 @@ viewWindow model { index, zIndex, plane, isFocused, render } =
         )
 
 
-showBoundaries : Vec2 -> ZIndex -> Plane -> List (Attribute msg)
-showBoundaries tol (ZIndex zindex) plane =
-    List.indexedMap
-        (\ix b ->
-            Element.inFront
-                (el
-                    [ Element.moveRight (getX b.position)
-                    , Element.moveDown (getY b.position)
-                    , width (px <| round (getX b.size))
-                    , height (px <| round (getY b.size))
-                    , Element.Border.width 1
-                    , Element.Border.color
-                        (if ix < 2 then
-                            rgb 1 0 0
-
-                         else if ix < 4 then
-                            rgb 0 1 0
-
-                         else
-                            rgb 0 0 1
-                        )
-                    , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10 + 1))
-                    ]
-                    Element.none
-                )
-        )
-        (getBoundaries plane tol)
-
-
 
 -- Helpers
-
-
-isFocusedIndex : Index -> Index -> Bool
-isFocusedIndex (Index a) (Index b) =
-    a == b
 
 
 unwrapIndex : Index -> Int
@@ -493,3 +412,8 @@ sortedByOrder m =
         |> List.sortBy (\( _, ZIndex zix, _ ) -> zix)
         |> List.map (\( ix, _, w ) -> ( ix, w ))
         |> List.reverse
+
+
+mapPlane : (Plane -> Plane) -> Window msg -> Window msg
+mapPlane fn w =
+    { w | plane = fn w.plane }

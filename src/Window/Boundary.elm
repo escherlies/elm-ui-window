@@ -259,3 +259,7 @@ handleRezise wp corner delta =
                 else
                     w
            )
+
+
+
+-- Debug view

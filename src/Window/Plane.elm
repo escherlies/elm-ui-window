@@ -109,3 +109,12 @@ topLeft p =
 centerOffset : Vec2 -> Vec2 -> Vec2
 centerOffset viewport plane =
     scale 0.5 (sub viewport plane)
+
+
+
+-- Default
+
+
+default : Plane
+default =
+    { position = vec2 0 0, size = vec2 0 0 }
