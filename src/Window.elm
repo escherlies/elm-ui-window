@@ -20,6 +20,11 @@ type alias Window msg =
     }
 
 
+mapPlane : (Plane -> Plane) -> Window msg -> Window msg
+mapPlane fn w =
+    { w | plane = fn w.plane }
+
+
 type Index
     = Index Int
 
