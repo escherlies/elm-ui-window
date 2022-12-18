@@ -11,11 +11,12 @@ import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getBoundaries, getHit, handleRezise)
 import Window.Plane exposing (Plane)
+import Window.Utils exposing (flip)
 
 
 type alias Window msg =
     { plane : Plane
-    , render : Int -> Plane -> Element msg
+    , render : (Int -> Vec2 -> msg) -> Int -> Plane -> Element msg
     }
 
 
@@ -315,7 +316,7 @@ view toMsg model windows =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getPlaneHits model)
          ]
-            ++ renderWindows model (List.map .render windows)
+            ++ renderWindows model (List.map (flip (trackWindow toMsg) << .render) windows)
          -- -- Debug
          -- ++ (withOrder model
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
@@ -323,6 +324,11 @@ view toMsg model windows =
          --    )
         )
         Element.none
+
+
+trackWindow : (Msg -> msg) -> Int -> Vec2 -> msg
+trackWindow toMsg ix =
+    toMsg << TrackWindow (Index ix)
 
 
 renderWindows : Model -> List (Int -> Plane -> Element msg) -> List (Attribute msg)

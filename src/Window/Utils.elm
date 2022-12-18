@@ -65,6 +65,11 @@ vec2order order a b =
 -- Combinators
 
 
+flip : a -> (a -> b) -> b
+flip a b =
+    b a
+
+
 {-| Call a function `f` twice with an argument `x`.
 
 Also known as Warbler (`λab.abb`)
