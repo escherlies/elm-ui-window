@@ -17,6 +17,11 @@ takeAndAppend x xs =
         |> i_ (++) [ x ]
 
 
+uncurry : (a -> b -> c) -> ( a, b ) -> c
+uncurry fn ( a, b ) =
+    fn a b
+
+
 
 -- Vector helpers
 

@@ -4,14 +4,14 @@ import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
 import Html.Attributes
 import Html.Events
-import Json.Decode as D exposing (index)
+import Json.Decode as D exposing (Decoder, index)
 import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
 import Window.Elements exposing (cursor, userSelect)
 import Window.Plane exposing (Plane)
-import Window.Utils exposing (apply,  takeAndAppend)
+import Window.Utils exposing (apply, takeAndAppend)
 
 
 type alias Window msg =
@@ -71,7 +71,7 @@ updatePlanes =
 type Msg
     = TrackWindow Index Vec2
     | StopTrackWindow
-    | PointerDown
+    | PointerDown Vec2
     | MouseMove Vec2
     | UpdatePlanes (List Plane)
 
@@ -84,8 +84,8 @@ update msg model =
             , Cmd.none
             )
 
-        PointerDown ->
-            handlePointerDown model
+        PointerDown mp ->
+            handlePointerDown { model | mousePosition = mp }
 
         TrackWindow ix mp ->
             ( { model
@@ -94,6 +94,7 @@ update msg model =
                     unwrap (vec2 0 0)
                         (\w -> sub w.position mp)
                         (Array.get (unwrapIndex ix) model.planes)
+                , order = takeAndAppend ix model.order
               }
             , Cmd.none
             )
@@ -121,6 +122,7 @@ handleUpdatePlanes model planes =
 handlePointerDown : Model -> ( Model, Cmd msg )
 handlePointerDown model =
     getPlaneHitsIx model
+        |> Debug.log ""
         |> Maybe.map
             (\( ix, h ) ->
                 if model.drag == None then
@@ -255,6 +257,14 @@ getCursor mh =
 -- View
 
 
+mapPointerPosition : (Vec2 -> value) -> Decoder value
+mapPointerPosition msg =
+    D.map2 vec2
+        (D.field "clientX" D.float)
+        (D.field "clientY" D.float)
+        |> D.map msg
+
+
 view : (Msg -> msg) -> Model -> List (Window msg) -> Element msg
 view toMsg model windows =
     el
@@ -262,8 +272,8 @@ view toMsg model windows =
          , height fill
          , clip
          , htmlAttribute
-            (Html.Events.stopPropagationOn "pointerdown"
-                (D.succeed ( toMsg PointerDown, True ))
+            (Html.Events.on "pointerdown"
+                (mapPointerPosition (toMsg << PointerDown))
             )
          , htmlAttribute
             (Html.Events.on "pointerup"
@@ -271,11 +281,7 @@ view toMsg model windows =
             )
          , htmlAttribute
             (Html.Events.on "pointermove"
-                (D.map2 vec2
-                    (D.field "clientX" D.float)
-                    (D.field "clientY" D.float)
-                    |> D.map (toMsg << MouseMove)
-                )
+                (mapPointerPosition (toMsg << MouseMove))
             )
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getPlaneHits model)
@@ -283,6 +289,7 @@ view toMsg model windows =
             ++ renderWindows model (List.map (apply toMsg << .render) windows)
          -- -- Debug
          -- ++ (withOrder model
+         --         |> List.map (Tuple.mapFirst unwrapZindex)
          --         |> List.map (uncurry (showBoundaries defaultTolerance))
          --         |> List.concat
          --    )
