@@ -122,7 +122,6 @@ handleUpdatePlanes model planes =
 handlePointerDown : Model -> ( Model, Cmd msg )
 handlePointerDown model =
     getPlaneHitsIx model
-        |> Debug.log ""
         |> Maybe.map
             (\( ix, h ) ->
                 if model.drag == None then
@@ -369,6 +368,10 @@ viewWindow model { index, zIndex, plane, isFocused, render } =
              , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| unwrapZindex zIndex * 10))
              ]
                 ++ userSelect (model.drag == None && isFocused)
+             -- TODO: Prevent opening a link clicked in a background window
+             -- Adding pointerEventsNone to `userSelect False` has currently no effect
+             -- since pointer down immediatly focuses the element
+             -- which sets thes isFocusedState to true
             )
          <|
             render (unwrapIndex index) plane

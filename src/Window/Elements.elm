@@ -25,3 +25,13 @@ userSelect val =
         , Element.htmlAttribute (style "-webkit-user-select" "none")
         , Element.htmlAttribute (style "-webkit-touch-callout" "none")
         ]
+
+
+pointerEventsNone : Element.Attribute msg
+pointerEventsNone =
+    Element.htmlAttribute (Html.Attributes.style "pointer-events" "none")
+
+
+pointerEventsAuto : Element.Attribute msg
+pointerEventsAuto =
+    Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
