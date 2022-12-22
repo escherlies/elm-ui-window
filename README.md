@@ -61,7 +61,7 @@ view : Model -> Html Msg
 view model =
     layout []
         -- Mount the view wherever you want
-        (Window.view WindowMsg model.windowModel windows)
+        (Window.view WindowMsg { showAnchorPoints = False } model.windowModel windows)
 
 
 windows : List (Window.Window msg)
