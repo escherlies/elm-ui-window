@@ -1,4 +1,4 @@
-module Window exposing (Model, Msg, Window, init, initWith, mapPlane, onDrag, update, updatePlanes, view)
+module Window exposing (Model, Msg, Window, fromScreen, init, initWith, mapPlane, onDrag, toScreen, update, updatePlanes, view)
 
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
@@ -6,8 +6,9 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder, index)
 import List.Extra
-import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
+import Math.Vector2 exposing (Vec2, add, getX, getY, scale, sub, vec2)
 import Maybe.Extra exposing (unwrap)
+import String
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
 import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
 import Window.Plane exposing (Plane)
@@ -40,6 +41,8 @@ type alias Model =
     , drag : Drag
     , mousePosition : Vec2
     , mouseOffset : Vec2
+    , offset : Vec2
+    , scale : Float
     }
 
 
@@ -50,6 +53,8 @@ init =
     , drag = None
     , mousePosition = vec2 0 0
     , mouseOffset = vec2 0 0
+    , offset = vec2 0 0
+    , scale = 1
     }
 
 
@@ -85,14 +90,14 @@ update msg model =
             )
 
         PointerDown mp ->
-            handlePointerDown { model | mousePosition = mp }
+            handlePointerDown { model | mousePosition = fromScreenPosition model mp }
 
         TrackWindow ix mp ->
             ( { model
                 | drag = Move ix
                 , mouseOffset =
                     unwrap (vec2 0 0)
-                        (\w -> sub w.position mp)
+                        (\w -> sub w.position (fromScreenPosition model mp))
                         (Array.get (unwrapIndex ix) model.planes)
                 , order = takeAndAppend ix model.order
               }
@@ -104,8 +109,8 @@ update msg model =
 
         MouseMove mp ->
             ( { model
-                | mousePosition = mp
-                , planes = manipulatePlanes model mp
+                | mousePosition = fromScreenPosition model mp
+                , planes = manipulatePlanes model (fromScreenPosition model mp)
               }
             , Cmd.none
             )
@@ -197,7 +202,7 @@ getPlaneHits : Model -> Maybe Hit
 getPlaneHits model =
     sortedByOrder model
         |> List.map Tuple.second
-        |> List.map (getHit defaultTolerance model.mousePosition)
+        |> List.map (getHit (scale (1 / model.scale) defaultTolerance) model.mousePosition)
         |> List.Extra.findMap identity
 
 
@@ -206,7 +211,7 @@ getPlaneHitsIx model =
     sortedByOrder model
         |> List.Extra.findMap
             (\( ix, w ) ->
-                Maybe.map (Tuple.pair ix) <| getHit defaultTolerance model.mousePosition w
+                Maybe.map (Tuple.pair ix) <| getHit (scale (1 / model.scale) defaultTolerance) model.mousePosition w
             )
 
 
@@ -290,6 +295,7 @@ view toMsg opts model windows =
             ++ (if opts.showAnchorPoints then
                     withOrder model
                         |> List.map (Tuple.mapFirst unwrapZindex)
+                        |> List.map (Tuple.mapSecond (toScreen model))
                         |> List.map (uncurry (showAnchorPoint defaultTolerance))
                         |> List.concat
 
@@ -358,17 +364,55 @@ getRenderElement focusedIndex ( index, zindex, window ) render =
     }
 
 
+
+--
+
+
+toScreenPosition : { a | scale : Float, offset : Vec2 } -> Vec2 -> Vec2
+toScreenPosition model =
+    scale model.scale << add model.offset
+
+
+fromScreenPosition : { a | offset : Vec2, scale : Float } -> Vec2 -> Vec2
+fromScreenPosition model =
+    add (scale -1 model.offset) << scale (1 / model.scale)
+
+
+toScreen : { a | offset : Vec2, scale : Float } -> { b | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
+toScreen model plane =
+    { position = toScreenPosition model plane.position
+    , size = plane.size |> scale model.scale
+    }
+
+
+{-| Normalize an offsetted, scaled plane back
+-}
+fromScreen : { a | offset : Vec2, scale : Float } -> { b | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
+fromScreen model plane =
+    { position = fromScreenPosition model plane.position
+    , size = plane.size |> scale (1 / model.scale)
+    }
+
+
+
+--
+
+
 viewWindow :
     Model
     -> WindowRender msg
     -> Element.Attribute msg
 viewWindow model { index, zIndex, plane, isFocused, render } =
+    let
+        planeOnScreen =
+            toScreen model plane
+    in
     Element.inFront
         (el
-            ([ Element.moveRight (getX plane.position)
-             , Element.moveDown (getY plane.position)
-             , height (px <| round <| getY plane.size)
-             , width (px <| round <| getX plane.size)
+            ([ Element.moveRight (getX planeOnScreen.position)
+             , Element.moveDown (getY planeOnScreen.position)
+             , height (px <| round <| getY planeOnScreen.size)
+             , width (px <| round <| getX planeOnScreen.size)
              , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| unwrapZindex zIndex * 10))
              ]
                 ++ userSelect (model.drag == None && isFocused)
