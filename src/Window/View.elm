@@ -9,6 +9,37 @@ import Window.Elements exposing (cursor, userSelect)
 import Window.Plane exposing (Plane)
 
 
+{-| Show just a rectangle that can be dragged and resized with some content
+-}
+simple :
+    { a
+        | backgroundColor : Element.Color
+        , foregroundColor : Element.Color
+        , attributes : List (Element.Attribute msg)
+        , content : Element msg
+    }
+    -> (Window.Msg -> msg)
+    -> Int
+    -> Plane
+    -> Element msg
+simple { backgroundColor, foregroundColor, content, attributes } toMsg ix _ =
+    el
+        ([ Element.Border.width 1
+         , Element.Border.color foregroundColor
+         , width fill
+         , height fill
+         , Element.Background.color backgroundColor
+         , onDrag toMsg ix
+         , cursor "move"
+         , clip
+         , scrollbars
+         , padding 8
+         ]
+            ++ attributes
+        )
+        content
+
+
 {-| A default view serving as an example. You should copy this and customize it to your likeing :)
 -}
 defaultWindowElement :

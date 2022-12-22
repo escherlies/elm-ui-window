@@ -2,7 +2,7 @@ module Window.Boundary exposing (..)
 
 import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
 import Window.Plane exposing (Plane, isOnPlane)
-import Window.Utils exposing (addXof, addYof, vec2uni)
+import Window.Utils exposing (addXof, addYof, flip, setXof, setYof, vec2uni)
 
 
 type Boundary
@@ -160,6 +160,43 @@ right w tol =
 
 
 
+-- Resize helpers
+
+
+half : Vec2 -> Vec2
+half =
+    scale (1 / 2)
+
+
+topCenter : Plane -> Vec2 -> Plane
+topCenter w tol =
+    { position = setXof (sub (half w.size) tol |> add w.position) (sub w.position tol)
+    , size = cornerSize tol
+    }
+
+
+leftCenter : Plane -> Vec2 -> Plane
+leftCenter w tol =
+    { position = setYof (sub (half w.size) tol |> add w.position) (sub w.position tol)
+    , size = cornerSize tol
+    }
+
+
+bottomCenter : Plane -> Vec2 -> Plane
+bottomCenter w tol =
+    { position = setXof (sub (half w.size) tol |> add w.position) (add w.position w.size |> flip sub tol)
+    , size = cornerSize tol
+    }
+
+
+rightCenter : Plane -> Vec2 -> Plane
+rightCenter w tol =
+    { position = setYof (sub (half w.size) tol |> add w.position) (add w.position w.size |> flip sub tol)
+    , size = cornerSize tol
+    }
+
+
+
 --
 
 
@@ -181,8 +218,28 @@ getBoundaries w tol =
     ]
 
 
+{-| Get all anchor points for a given window
+-}
+getAnchorPoints : Plane -> Vec2 -> List Plane
+getAnchorPoints w tol =
+    [ topCenter w tol
+    , bottomCenter w tol
+    , leftCenter w tol
+    , rightCenter w tol
+    , topLeft w tol
+    , topRight w tol
+    , bottomLeft w tol
+    , bottomRight w tol
+    ]
+
+
 
 --
+
+
+min : number
+min =
+    20
 
 
 {-| Add the delta of the movement to the window
@@ -240,9 +297,9 @@ handleRezise wp corner delta =
             }
     )
         |> (\w ->
-                if getX w.size < 100 then
+                if getX w.size < min then
                     { w
-                        | size = setX 100 w.size
+                        | size = setX min w.size
                         , position = setX (getX wp.position) w.position
                     }
 
@@ -250,9 +307,9 @@ handleRezise wp corner delta =
                     w
            )
         |> (\w ->
-                if getY w.size < 100 then
+                if getY w.size < min then
                     { w
-                        | size = setY 100 w.size
+                        | size = setY min w.size
                         , position = setY (getY wp.position) w.position
                     }
 

@@ -9,9 +9,9 @@ import List.Extra
 import Math.Vector2 exposing (Vec2, add, getX, getY, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
-import Window.Elements exposing (cursor, userSelect)
+import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
 import Window.Plane exposing (Plane)
-import Window.Utils exposing (apply, takeAndAppend)
+import Window.Utils exposing (apply, takeAndAppend, uncurry)
 
 
 type alias Window msg =
@@ -264,8 +264,8 @@ mapPointerPosition msg =
         |> D.map msg
 
 
-view : (Msg -> msg) -> Model -> List (Window msg) -> Element msg
-view toMsg model windows =
+view : (Msg -> msg) -> { a | showAnchorPoints : Bool } -> Model -> List (Window msg) -> Element msg
+view toMsg opts model windows =
     el
         ([ width fill
          , height fill
@@ -286,12 +286,16 @@ view toMsg model windows =
          , cursor <| getCursor (getPlaneHits model)
          ]
             ++ renderWindows model (List.map (apply toMsg << .render) windows)
-         -- -- Debug
-         -- ++ (withOrder model
-         --         |> List.map (Tuple.mapFirst unwrapZindex)
-         --         |> List.map (uncurry (showBoundaries defaultTolerance))
-         --         |> List.concat
-         --    )
+            -- Show anchor points
+            ++ (if opts.showAnchorPoints then
+                    withOrder model
+                        |> List.map (Tuple.mapFirst unwrapZindex)
+                        |> List.map (uncurry (showAnchorPoint defaultTolerance))
+                        |> List.concat
+
+                else
+                    []
+               )
         )
         Element.none
 

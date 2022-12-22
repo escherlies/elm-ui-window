@@ -1,7 +1,12 @@
 module Window.Elements exposing (..)
 
-import Element exposing (Attribute, htmlAttribute)
+import Element exposing (Attribute, el, height, htmlAttribute, mouseOver, px, rgb, rgb255, width)
+import Element.Background
+import Element.Border
 import Html.Attributes exposing (style)
+import Math.Vector2 exposing (Vec2, getX, getY)
+import Window.Boundary exposing (getAnchorPoints)
+import Window.Plane exposing (Plane)
 
 
 
@@ -35,3 +40,33 @@ pointerEventsNone =
 pointerEventsAuto : Element.Attribute msg
 pointerEventsAuto =
     Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+
+
+
+--
+--
+
+
+showAnchorPoint : Vec2 -> Int -> Plane -> List (Attribute msg)
+showAnchorPoint tol zindex plane =
+    List.indexedMap
+        (\_ b ->
+            Element.inFront
+                (el
+                    [ Element.moveRight (getX b.position)
+                    , Element.moveDown (getY b.position)
+                    , width (px <| round (getX b.size))
+                    , height (px <| round (getY b.size))
+                    , Element.Border.width 1
+                    , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| zindex * 10 + 1))
+                    , Element.Border.rounded (getX b.size |> round)
+                    , Element.Background.color (rgb 1 1 1)
+                    , Element.Border.color (rgb255 64 137 255)
+                    , mouseOver
+                        [ Element.Background.color (rgb255 64 137 255)
+                        ]
+                    ]
+                    Element.none
+                )
+        )
+        (getAnchorPoints plane tol)
