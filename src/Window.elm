@@ -1,4 +1,4 @@
-module Window exposing (Model, Msg, Window, fromScreen, init, initWith, mapPlane, onDrag, toScreen, update, updatePlanes, view)
+module Window exposing (Model, Msg, Window, fromScreen, fromScreenPosition, init, initWith, mapPlane, onDrag, toScreen, toScreenPosition, update, updatePlanes, view)
 
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
