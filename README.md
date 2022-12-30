@@ -19,6 +19,7 @@ You basically have this type...
 type alias Window msg =
 { rect : Rect
 , render : (Msg -> msg) -> Int -> Rect -> Element msg
+, resize : Resize
 }
 ```
 
@@ -61,23 +62,26 @@ view : Model -> Html Msg
 view model =
     layout []
         -- Mount the view wherever you want
-        (Window.view WindowMsg { showAnchorPoints = False } model.windowModel windows)
+        (Window.view WindowMsg model.windowModel windows)
 
 
 windows : List (Window.Window msg)
 windows =
-    [ -- A window is just a rect in xy space and some render fn to render the content inside that rect. That's it!
+    -- A window is just a rect in xy space and some render fn to render the content inside that rect. That's it!
+    [ -- A rect is a rectangle with a position and size
       { rect =
-            -- A rect is a rectangle with a position and size
             { position = vec2 0 0
             , size = vec2 100 100
             }
+
+      -- A simple view render function. You don't have to use the `_ _ _` params, hence the `_`.
       , render =
-            -- A simple view render function. You don't have to use the `_ _ _` params, hence the `_`.
             \_ _ _ ->
-                -- Just give it some border and you are good to go!
-                el [ Element.Border.width 3 ]
-                    (text "Hello, World!")
+                -- Just give it some style and you are good to go!
+                el [ Element.Border.width 3 ] (text "Hello, World!")
+
+      -- Handles how resize should be handled
+      , resize = HideAnchorPoints
       }
     ]
 ```
@@ -111,6 +115,7 @@ windows2 =
                     , text <| "width  = " ++ String.fromFloat (getX rect.size)
                     , text <| "height = " ++ String.fromFloat (getY rect.size)
                     ]
+      , resize = ShowAnchorPoints
       }
     ]
 ```
