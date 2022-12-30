@@ -12,7 +12,7 @@ import String
 import Window.Boundary exposing (Boundary(..), Hit(..), Resize(..), defaultTolerance, getHit, handleRezise)
 import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
 import Window.Rect exposing (Rect)
-import Window.Utils exposing (apply, takeAndAppend)
+import Window.Utils exposing (takeAndAppend)
 
 
 type alias Window msg =
@@ -291,7 +291,7 @@ view toMsg model windows =
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
          , cursor <| getCursor (getRectHits model)
          ]
-            ++ renderWindows model (List.map (apply toMsg << .render) windows)
+            ++ renderWindows model (List.map ((|>) toMsg << .render) windows)
             -- Show anchor points
             ++ renderAnchorPoints model windows
         )

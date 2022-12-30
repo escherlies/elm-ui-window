@@ -84,9 +84,6 @@ vec2order order a b =
 -- Combinators
 
 
-apply : a -> (a -> b) -> b
-apply =
-    (|>)
 
 
 {-| Just an idea...
