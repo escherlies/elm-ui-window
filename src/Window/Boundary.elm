@@ -1,6 +1,6 @@
 module Window.Boundary exposing (..)
 
-import Math.Vector2 exposing (Vec2, add, getX, getY, scale, setX, setY, sub)
+import Math.Vector2 exposing (Vec, add, getX, getY, scale, setX, setY, sub)
 import Window.Plane exposing (Plane, isOnPlane)
 import Window.Utils exposing (addXof, addYof, flip, setXof, setYof, vec2uni)
 
@@ -25,7 +25,7 @@ type Hit
     | HitBoundary Boundary
 
 
-getHit : Vec2 -> Vec2 -> Plane -> Maybe Hit
+getHit : Vec Float -> Vec Float -> Plane -> Maybe Hit
 getHit tol mp w =
     if isOnPlane (withTolerance tol w) mp then
         Maybe.map HitBoundary (hitBoundary w tol mp)
@@ -40,7 +40,7 @@ getHit tol mp w =
 -- Check boundary
 
 
-hitBoundary : Plane -> Vec2 -> Vec2 -> Maybe Boundary
+hitBoundary : Plane -> Vec Float -> Vec Float -> Maybe Boundary
 hitBoundary w tol mp =
     let
         isAt areaFn =
@@ -78,19 +78,19 @@ hitBoundary w tol mp =
 --
 
 
-withTolerance : Vec2 -> Plane -> Plane
+withTolerance : Vec Float -> Plane -> Plane
 withTolerance tol { position, size } =
     { position = sub position tol
     , size = add size (cornerSize tol)
     }
 
 
-defaultTolerance : Vec2
+defaultTolerance : Vec Float
 defaultTolerance =
     vec2uni 6
 
 
-cornerSize : Vec2 -> Vec2
+cornerSize : Vec Float -> Vec Float
 cornerSize tol =
     scale 2 tol
 
@@ -99,28 +99,28 @@ cornerSize tol =
 -- Corners
 
 
-topLeft : Plane -> Vec2 -> Plane
+topLeft : Plane -> Vec Float -> Plane
 topLeft w tol =
     { position = sub w.position tol
     , size = cornerSize tol
     }
 
 
-topRight : Plane -> Vec2 -> Plane
+topRight : Plane -> Vec Float -> Plane
 topRight w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol
     }
 
 
-bottomLeft : Plane -> Vec2 -> Plane
+bottomLeft : Plane -> Vec Float -> Plane
 bottomLeft w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol
     }
 
 
-bottomRight : Plane -> Vec2 -> Plane
+bottomRight : Plane -> Vec Float -> Plane
 bottomRight w tol =
     { position = sub w.position tol |> add w.size
     , size = cornerSize tol
@@ -131,28 +131,28 @@ bottomRight w tol =
 -- Edges
 
 
-top : Plane -> Vec2 -> Plane
+top : Plane -> Vec Float -> Plane
 top w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addXof w.size
     }
 
 
-bottom : Plane -> Vec2 -> Plane
+bottom : Plane -> Vec Float -> Plane
 bottom w tol =
     { position = sub w.position tol |> addYof w.size
     , size = cornerSize tol |> addXof w.size
     }
 
 
-left : Plane -> Vec2 -> Plane
+left : Plane -> Vec Float -> Plane
 left w tol =
     { position = sub w.position tol
     , size = cornerSize tol |> addYof w.size
     }
 
 
-right : Plane -> Vec2 -> Plane
+right : Plane -> Vec Float -> Plane
 right w tol =
     { position = sub w.position tol |> addXof w.size
     , size = cornerSize tol |> addYof w.size
@@ -163,33 +163,33 @@ right w tol =
 -- Resize helpers
 
 
-half : Vec2 -> Vec2
+half : Vec Float -> Vec Float
 half =
     scale (1 / 2)
 
 
-topCenter : Plane -> Vec2 -> Plane
+topCenter : Plane -> Vec Float -> Plane
 topCenter w tol =
     { position = setXof (sub (half w.size) tol |> add w.position) (sub w.position tol)
     , size = cornerSize tol
     }
 
 
-leftCenter : Plane -> Vec2 -> Plane
+leftCenter : Plane -> Vec Float -> Plane
 leftCenter w tol =
     { position = setYof (sub (half w.size) tol |> add w.position) (sub w.position tol)
     , size = cornerSize tol
     }
 
 
-bottomCenter : Plane -> Vec2 -> Plane
+bottomCenter : Plane -> Vec Float -> Plane
 bottomCenter w tol =
     { position = setXof (sub (half w.size) tol |> add w.position) (add w.position w.size |> flip sub tol)
     , size = cornerSize tol
     }
 
 
-rightCenter : Plane -> Vec2 -> Plane
+rightCenter : Plane -> Vec Float -> Plane
 rightCenter w tol =
     { position = setYof (sub (half w.size) tol |> add w.position) (add w.position w.size |> flip sub tol)
     , size = cornerSize tol
@@ -205,7 +205,7 @@ rightCenter w tol =
 Maybe helpful to display boundaries for debugging
 
 -}
-getBoundaries : Plane -> Vec2 -> List Plane
+getBoundaries : Plane -> Vec Float -> List Plane
 getBoundaries w tol =
     [ top w tol
     , bottom w tol
@@ -220,7 +220,7 @@ getBoundaries w tol =
 
 {-| Get all anchor points for a given window
 -}
-getAnchorPoints : Plane -> Vec2 -> List Plane
+getAnchorPoints : Plane -> Vec Float -> List Plane
 getAnchorPoints w tol =
     [ topCenter w tol
     , bottomCenter w tol
@@ -244,7 +244,7 @@ min =
 
 {-| Add the delta of the movement to the window
 -}
-handleRezise : Plane -> Boundary -> Vec2 -> Plane
+handleRezise : Plane -> Boundary -> Vec Float -> Plane
 handleRezise wp corner delta =
     (case corner of
         Bottom ->

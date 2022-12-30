@@ -6,7 +6,7 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder, index)
 import List.Extra
-import Math.Vector2 exposing (Vec2, add, getX, getY, scale, sub, vec2)
+import Math.Vector2 exposing (Vec, add, getX, getY, scale, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import String
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
@@ -39,9 +39,9 @@ type alias Model =
     { planes : Array Plane
     , order : List Index
     , drag : Drag
-    , mousePosition : Vec2
-    , mouseOffset : Vec2
-    , offset : Vec2
+    , mousePosition : Vec Float
+    , mouseOffset : Vec Float
+    , offset : Vec Float
     , scale : Float
     }
 
@@ -74,10 +74,10 @@ updatePlanes =
 
 
 type Msg
-    = TrackWindow Index Vec2
+    = TrackWindow Index (Vec Float)
     | StopTrackWindow
-    | PointerDown Vec2
-    | MouseMove Vec2
+    | PointerDown (Vec Float)
+    | MouseMove (Vec Float)
     | UpdatePlanes (List Plane)
 
 
@@ -155,7 +155,7 @@ handlePointerDown model =
 -- Handle moving and resizing
 
 
-manipulatePlanes : Model -> Vec2 -> Array Plane
+manipulatePlanes : Model -> Vec Float -> Array Plane
 manipulatePlanes model mp =
     case model.drag of
         None ->
@@ -261,7 +261,7 @@ getCursor mh =
 -- View
 
 
-mapPointerPosition : (Vec2 -> value) -> Decoder value
+mapPointerPosition : (Vec Float -> value) -> Decoder value
 mapPointerPosition msg =
     D.map2 vec2
         (D.field "clientX" D.float)
@@ -306,7 +306,7 @@ view toMsg opts model windows =
         Element.none
 
 
-trackWindow : (Msg -> msg) -> Int -> Vec2 -> msg
+trackWindow : (Msg -> msg) -> Int -> Vec Float -> msg
 trackWindow toMsg ix =
     toMsg << TrackWindow (Index ix)
 
@@ -368,17 +368,17 @@ getRenderElement focusedIndex ( index, zindex, window ) render =
 --
 
 
-toScreenPosition : { a | scale : Float, offset : Vec2 } -> Vec2 -> Vec2
+toScreenPosition : { a | scale : Float, offset : Vec Float } -> Vec Float -> Vec Float
 toScreenPosition model =
     scale model.scale << add model.offset
 
 
-fromScreenPosition : { a | offset : Vec2, scale : Float } -> Vec2 -> Vec2
+fromScreenPosition : { a | offset : Vec Float, scale : Float } -> Vec Float -> Vec Float
 fromScreenPosition model =
     add (scale -1 model.offset) << scale (1 / model.scale)
 
 
-toScreen : { a | offset : Vec2, scale : Float } -> { b | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
+toScreen : { a | offset : Vec Float, scale : Float } -> { b | position : Vec Float, size : Vec Float } -> { position : Vec Float, size : Vec Float }
 toScreen model plane =
     { position = toScreenPosition model plane.position
     , size = plane.size |> scale model.scale
@@ -387,7 +387,7 @@ toScreen model plane =
 
 {-| Normalize an offsetted, scaled plane back
 -}
-fromScreen : { a | offset : Vec2, scale : Float } -> { b | position : Vec2, size : Vec2 } -> { position : Vec2, size : Vec2 }
+fromScreen : { a | offset : Vec Float, scale : Float } -> { b | position : Vec Float, size : Vec Float } -> { position : Vec Float, size : Vec Float }
 fromScreen model plane =
     { position = fromScreenPosition model plane.position
     , size = plane.size |> scale (1 / model.scale)

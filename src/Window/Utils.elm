@@ -1,7 +1,7 @@
 module Window.Utils exposing (..)
 
 import List.Extra
-import Math.Vector2 exposing (Vec2, add, getX, getY, setX, setY, vec2)
+import Math.Vector2 exposing (Vec, add, getX, getY, setX, setY, vec2)
 
 
 
@@ -31,7 +31,7 @@ uncurry fn ( a, b ) =
     setX (getX a) b
 
 -}
-setXof : Vec2 -> Vec2 -> Vec2
+setXof : Vec number -> Vec number -> Vec number
 setXof =
     setX << getX
 
@@ -41,41 +41,41 @@ setXof =
     setX (getX a) b
 
 -}
-setYof : Vec2 -> Vec2 -> Vec2
+setYof : Vec number -> Vec number -> Vec number
 setYof =
     setY << getY
 
 
 {-| Add only the x component of a to b
 -}
-addXof : Vec2 -> Vec2 -> Vec2
+addXof : Vec number -> Vec number -> Vec number
 addXof =
     add << setY 0
 
 
 {-| Add only the y component of a to b
 -}
-addYof : Vec2 -> Vec2 -> Vec2
+addYof : Vec number -> Vec number -> Vec number
 addYof =
     add << setX 0
 
 
-vec2uni : Float -> Vec2
+vec2uni : number -> Vec number
 vec2uni =
     callTwice vec2
 
 
-zero : Vec2
+zero : Vec number
 zero =
     vec2uni 0
 
 
-vec2lt : Vec2 -> Vec2 -> Bool
+vec2lt : Vec number -> Vec number -> Bool
 vec2lt =
     vec2order LT
 
 
-vec2order : Order -> Vec2 -> Vec2 -> Bool
+vec2order : Order -> Vec number -> Vec number -> Bool
 vec2order order a b =
     (compare (getX a) (getX b) == order) && (compare (getY a) (getY b) == order)
 

@@ -3,13 +3,13 @@ module Window.Debug exposing (..)
 import Element exposing (Attribute, centerX, centerY, column, el, height, htmlAttribute, px, rgb, text, width)
 import Element.Border
 import Html.Attributes
-import Math.Vector2 exposing (Vec2, getX, getY)
+import Math.Vector2 exposing (Vec, getX, getY)
 import Window exposing (onDrag)
 import Window.Boundary exposing (getBoundaries)
 import Window.Plane exposing (Plane)
 
 
-showBoundaries : Vec2 -> Int -> Plane -> List (Attribute msg)
+showBoundaries : Vec Float -> Int -> Plane -> List (Attribute msg)
 showBoundaries tol zindex plane =
     List.indexedMap
         (\ix b ->
@@ -38,7 +38,7 @@ showBoundaries tol zindex plane =
         (getBoundaries plane tol)
 
 
-debugWindows : { a | windowModel : { b | mousePosition : Vec2 }, window : Vec2 } -> List { plane : Plane, render : (Window.Msg -> msg) -> Int -> { c | position : Vec2, size : Vec2 } -> Element.Element msg }
+debugWindows : { a | windowModel : { b | mousePosition : Vec Float }, window : Vec Float } -> List { plane : Plane, render : (Window.Msg -> msg) -> Int -> { c | position : Vec Float, size : Vec Float } -> Element.Element msg }
 debugWindows model =
     [ { plane = Window.Plane.default
       , render =

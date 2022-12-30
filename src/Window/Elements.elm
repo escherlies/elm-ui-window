@@ -4,7 +4,7 @@ import Element exposing (Attribute, el, height, htmlAttribute, mouseOver, px, rg
 import Element.Background
 import Element.Border
 import Html.Attributes exposing (style)
-import Math.Vector2 exposing (Vec2, getX, getY)
+import Math.Vector2 exposing (Vec, getX, getY)
 import Window.Boundary exposing (getAnchorPoints)
 import Window.Plane exposing (Plane)
 
@@ -47,7 +47,7 @@ pointerEventsAuto =
 --
 
 
-showAnchorPoint : Vec2 -> Int -> Plane -> List (Attribute msg)
+showAnchorPoint : Vec Float -> Int -> Plane -> List (Attribute msg)
 showAnchorPoint tol zindex plane =
     List.indexedMap
         (\_ b ->
