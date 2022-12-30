@@ -9,7 +9,7 @@ import List.Extra
 import Math.Vector2 exposing (Vec, add, getX, getY, scale, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import String
-import Window.Boundary exposing (Boundary(..), Hit(..), Resize(..), defaultTolerance, getHit, handleRezise)
+import Window.Boundary exposing (Boundary(..), Hit(..), Resize(..), defaultTolerance, getHit, handleRezise, isBoundaryHit)
 import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
 import Window.Rect exposing (Rect)
 import Window.Utils exposing (takeAndAppend)
@@ -36,8 +36,19 @@ type Drag
     | Move Index
 
 
+{-| Rho
+
+A subset of window containing rect and resize
+
+-}
+type alias Rho =
+    { rect : Rect
+    , resize : Resize
+    }
+
+
 type alias Model =
-    { rects : Array Rect
+    { rects : Array Rho
     , order : List Index
     , drag : Drag
     , mousePosition : Vec Float
@@ -61,7 +72,12 @@ init =
 
 initWith : List (Window msg) -> Model
 initWith =
-    handleUpdateRects init << List.map .rect
+    handleUpdateRects init << List.map toR
+
+
+toR : Window msg -> Rho
+toR { rect, resize } =
+    Rho rect resize
 
 
 {-| Update your windows if you need to. Use it like
@@ -69,7 +85,7 @@ initWith =
     updateRects (List.map .rect windows)
 
 -}
-updateRects : List Rect -> Msg
+updateRects : List Rho -> Msg
 updateRects =
     UpdateRects
 
@@ -79,7 +95,7 @@ type Msg
     | StopTrackWindow
     | PointerDown (Vec Float)
     | MouseMove (Vec Float)
-    | UpdateRects (List Rect)
+    | UpdateRects (List Rho)
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -99,7 +115,7 @@ update msg model =
                 , mouseOffset =
                     unwrap (vec2 0 0)
                         (\w -> sub w.position (fromScreenPosition model mp))
-                        (Array.get (unwrapIndex ix) model.rects)
+                        (Array.get (unwrapIndex ix) model.rects |> Maybe.map .rect)
                 , order = takeAndAppend ix model.order
               }
             , Cmd.none
@@ -117,7 +133,7 @@ update msg model =
             )
 
 
-handleUpdateRects : Model -> List Rect -> Model
+handleUpdateRects : Model -> List Rho -> Model
 handleUpdateRects model rects =
     { model
         | rects = Array.fromList rects
@@ -156,7 +172,7 @@ handlePointerDown model =
 -- Handle moving and resizing
 
 
-manipulateRects : Model -> Vec Float -> Array Rect
+manipulateRects : Model -> Vec Float -> Array Rho
 manipulateRects model mp =
     case model.drag of
         None ->
@@ -170,7 +186,7 @@ manipulateRects model mp =
             case targetWindow of
                 Just wp ->
                     Array.set ix
-                        { wp | position = add mp model.mouseOffset }
+                        (mapRect (\rect -> { rect | position = add mp model.mouseOffset }) wp)
                         model.rects
 
                 Nothing ->
@@ -187,8 +203,8 @@ manipulateRects model mp =
             in
             case targetWindow of
                 Just wp ->
-                    handleRezise wp corner delta
-                        |> (\w -> Array.set ix w model.rects)
+                    handleRezise wp.rect corner delta
+                        |> (\w -> Array.set ix (mapRect (always w) wp) model.rects)
 
                 Nothing ->
                     -- Should never happen
@@ -199,20 +215,29 @@ manipulateRects model mp =
 -- Helpers
 
 
-getRectHits : Model -> Maybe Hit
-getRectHits model =
-    sortedByOrder model
-        |> List.map Tuple.second
-        |> List.map (getHit (scale (1 / model.scale) defaultTolerance) model.mousePosition)
-        |> List.Extra.findMap identity
-
-
 getRectHitsIx : Model -> Maybe ( Index, Hit )
 getRectHitsIx model =
     sortedByOrder model
         |> List.Extra.findMap
             (\( ix, w ) ->
                 Maybe.map (Tuple.pair ix) <| getHit (scale (1 / model.scale) defaultTolerance) model.mousePosition w
+            )
+        |> Maybe.andThen
+            (checkResize model)
+
+
+checkResize : Model -> ( Index, Hit ) -> Maybe ( Index, Hit )
+checkResize model (( Index index, hit ) as foo) =
+    -- ! This lookup is unnecessary
+    -- TODO update sotedByOrder to include Resize and drop this lookup
+    Array.get index model.rects
+        |> Maybe.andThen
+            (\{ resize } ->
+                if resize == DisableResize && isBoundaryHit hit then
+                    Nothing
+
+                else
+                    Just foo
             )
 
 
@@ -289,10 +314,9 @@ view toMsg model windows =
                 (mapPointerPosition (toMsg << MouseMove))
             )
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
-         , cursor <| getCursor (getRectHits model)
+         , cursor <| getCursor (getRectHitsIx model |> Maybe.map Tuple.second)
          ]
             ++ renderWindows model (List.map ((|>) toMsg << .render) windows)
-            -- Show anchor points
             ++ renderAnchorPoints model windows
         )
         Element.none
@@ -461,12 +485,12 @@ getOrder listOfIndex =
 
 withOrder : Model -> List ( ZIndex, Rect )
 withOrder m =
-    List.Extra.zip (getOrder m.order) (toList m.rects)
+    List.Extra.zip (getOrder m.order) (List.map .rect (toList m.rects))
 
 
 withOrderIndexed : Model -> List ( Index, ZIndex, Rect )
 withOrderIndexed m =
-    List.Extra.zip (getOrder m.order) (toList m.rects)
+    List.Extra.zip (getOrder m.order) (List.map .rect (toList m.rects))
         |> List.indexedMap (\ix ( zindex, window ) -> ( Index ix, zindex, window ))
 
 
@@ -479,6 +503,6 @@ sortedByOrder m =
         |> List.reverse
 
 
-mapRect : (Rect -> Rect) -> Window msg -> Window msg
+mapRect : (r -> r) -> { a | rect : r } -> { a | rect : r }
 mapRect fn w =
     { w | rect = fn w.rect }

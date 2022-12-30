@@ -31,6 +31,16 @@ type Hit
     | HitBoundary Boundary
 
 
+isBoundaryHit : Hit -> Bool
+isBoundaryHit h =
+    case h of
+        HitBoundary _ ->
+            True
+
+        _ ->
+            False
+
+
 getHit : Vec Float -> Vec Float -> Rect -> Maybe Hit
 getHit tol mp w =
     if isOnRect (withTolerance tol w) mp then
