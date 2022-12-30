@@ -1,36 +1,36 @@
-module Window.Plane exposing (..)
+module Window.Rect exposing (..)
 
 import Math.Vector2 exposing (Vec, add, scale, setX, setY, sub, vec2)
 import Window.Utils exposing (compose12L, setXof, setYof, vec2lt)
 
 
-type alias Plane =
+type alias Rect =
     { position : Vec Float
     , size : Vec Float
     }
 
 
-isOnPlane : Plane -> Vec Float -> Bool
-isOnPlane { position, size } v =
+isOnRect : Rect -> Vec Float -> Bool
+isOnRect { position, size } v =
     vec2lt position v && vec2lt v (add position size)
 
 
-move : Vec Float -> Plane -> Plane
+move : Vec Float -> Rect -> Rect
 move delta p =
     { p | position = add delta p.position }
 
 
-moveTo : Vec Float -> Plane -> Plane
+moveTo : Vec Float -> Rect -> Rect
 moveTo pos p =
     { p | position = pos }
 
 
-setPosition : Vec Float -> Plane -> Plane
+setPosition : Vec Float -> Rect -> Rect
 setPosition =
     moveTo
 
 
-setSize : Plane -> Vec Float -> Plane
+setSize : Rect -> Vec Float -> Rect
 setSize p size =
     { p | size = size }
 
@@ -39,17 +39,17 @@ setSize p size =
 -- Positioning
 
 
-centerX : Vec Float -> Plane -> Plane
+centerX : Vec Float -> Rect -> Rect
 centerX viewport p =
     { p | position = setXof (centerOffset viewport p.size) p.position }
 
 
-centerY : Vec Float -> Plane -> Plane
+centerY : Vec Float -> Rect -> Rect
 centerY viewport p =
     { p | position = setYof (centerOffset viewport p.size) p.position }
 
 
-center : Vec Float -> Plane -> Plane
+center : Vec Float -> Rect -> Rect
 center viewport p =
     { p | position = centerOffset viewport p.size }
 
@@ -58,22 +58,22 @@ center viewport p =
 --
 
 
-top : Plane -> Plane
+top : Rect -> Rect
 top p =
     { p | position = setY 0 p.position }
 
 
-left : Plane -> Plane
+left : Rect -> Rect
 left p =
     { p | position = setX 0 p.position }
 
 
-bottom : Vec Float -> Plane -> Plane
+bottom : Vec Float -> Rect -> Rect
 bottom viewport p =
     { p | position = setYof (sub viewport p.size) p.position }
 
 
-right : Vec Float -> Plane -> Plane
+right : Vec Float -> Rect -> Rect
 right viewport p =
     { p | position = setXof (sub viewport p.size) p.position }
 
@@ -82,17 +82,17 @@ right viewport p =
 --
 
 
-bottomRight : Vec Float -> Plane -> Plane
+bottomRight : Vec Float -> Rect -> Rect
 bottomRight viewport p =
     { p | position = sub viewport p.size }
 
 
-bottomLeft : Vec Float -> Plane -> Plane
+bottomLeft : Vec Float -> Rect -> Rect
 bottomLeft =
     compose12L left bottom
 
 
-topRight : Vec Float -> Plane -> Plane
+topRight : Vec Float -> Rect -> Rect
 topRight =
     compose12L top right
 
@@ -107,14 +107,14 @@ topLeft p =
 
 
 centerOffset : Vec Float -> Vec Float -> Vec Float
-centerOffset viewport plane =
-    scale 0.5 (sub viewport plane)
+centerOffset viewport rect =
+    scale 0.5 (sub viewport rect)
 
 
 
 -- Default
 
 
-default : Plane
+default : Rect
 default =
     { position = vec2 0 0, size = vec2 0 0 }

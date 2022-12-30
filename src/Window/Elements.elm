@@ -6,7 +6,7 @@ import Element.Border
 import Html.Attributes exposing (style)
 import Math.Vector2 exposing (Vec, getX, getY)
 import Window.Boundary exposing (getAnchorPoints)
-import Window.Plane exposing (Plane)
+import Window.Rect exposing (Rect)
 
 
 
@@ -47,8 +47,8 @@ pointerEventsAuto =
 --
 
 
-showAnchorPoint : Vec Float -> Int -> Plane -> List (Attribute msg)
-showAnchorPoint tol zindex plane =
+showAnchorPoint : Vec Float -> Int -> Rect -> List (Attribute msg)
+showAnchorPoint tol zindex rect =
     List.indexedMap
         (\_ b ->
             Element.inFront
@@ -69,4 +69,4 @@ showAnchorPoint tol zindex plane =
                     Element.none
                 )
         )
-        (getAnchorPoints plane tol)
+        (getAnchorPoints rect tol)

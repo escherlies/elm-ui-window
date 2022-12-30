@@ -1,4 +1,4 @@
-module Window exposing (Model, Msg, Window, fromScreen, fromScreenPosition, init, initWith, mapPlane, onDrag, toScreen, toScreenPosition, update, updatePlanes, view)
+module Window exposing (Model, Msg, Window, fromScreen, fromScreenPosition, init, initWith, mapRect, onDrag, toScreen, toScreenPosition, update, updateRects, view)
 
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
@@ -11,13 +11,13 @@ import Maybe.Extra exposing (unwrap)
 import String
 import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
 import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
-import Window.Plane exposing (Plane)
+import Window.Rect exposing (Rect)
 import Window.Utils exposing (apply, takeAndAppend, uncurry)
 
 
 type alias Window msg =
-    { plane : Plane
-    , render : (Msg -> msg) -> Int -> Plane -> Element msg
+    { rect : Rect
+    , render : (Msg -> msg) -> Int -> Rect -> Element msg
     }
 
 
@@ -36,7 +36,7 @@ type Drag
 
 
 type alias Model =
-    { planes : Array Plane
+    { rects : Array Rect
     , order : List Index
     , drag : Drag
     , mousePosition : Vec Float
@@ -48,7 +48,7 @@ type alias Model =
 
 init : Model
 init =
-    { planes = Array.empty
+    { rects = Array.empty
     , order = []
     , drag = None
     , mousePosition = vec2 0 0
@@ -60,17 +60,17 @@ init =
 
 initWith : List (Window msg) -> Model
 initWith =
-    handleUpdatePlanes init << List.map .plane
+    handleUpdateRects init << List.map .rect
 
 
 {-| Update your windows if you need to. Use it like
 
-    updatePlanes (List.map .plane windows)
+    updateRects (List.map .rect windows)
 
 -}
-updatePlanes : List Plane -> Msg
-updatePlanes =
-    UpdatePlanes
+updateRects : List Rect -> Msg
+updateRects =
+    UpdateRects
 
 
 type Msg
@@ -78,14 +78,14 @@ type Msg
     | StopTrackWindow
     | PointerDown (Vec Float)
     | MouseMove (Vec Float)
-    | UpdatePlanes (List Plane)
+    | UpdateRects (List Rect)
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
-        UpdatePlanes ws ->
-            ( handleUpdatePlanes model ws
+        UpdateRects ws ->
+            ( handleUpdateRects model ws
             , Cmd.none
             )
 
@@ -98,7 +98,7 @@ update msg model =
                 , mouseOffset =
                     unwrap (vec2 0 0)
                         (\w -> sub w.position (fromScreenPosition model mp))
-                        (Array.get (unwrapIndex ix) model.planes)
+                        (Array.get (unwrapIndex ix) model.rects)
                 , order = takeAndAppend ix model.order
               }
             , Cmd.none
@@ -110,23 +110,23 @@ update msg model =
         MouseMove mp ->
             ( { model
                 | mousePosition = fromScreenPosition model mp
-                , planes = manipulatePlanes model (fromScreenPosition model mp)
+                , rects = manipulateRects model (fromScreenPosition model mp)
               }
             , Cmd.none
             )
 
 
-handleUpdatePlanes : Model -> List Plane -> Model
-handleUpdatePlanes model planes =
+handleUpdateRects : Model -> List Rect -> Model
+handleUpdateRects model rects =
     { model
-        | planes = Array.fromList planes
-        , order = List.map Index <| List.range 0 (List.length planes - 1)
+        | rects = Array.fromList rects
+        , order = List.map Index <| List.range 0 (List.length rects - 1)
     }
 
 
 handlePointerDown : Model -> ( Model, Cmd msg )
 handlePointerDown model =
-    getPlaneHitsIx model
+    getRectHitsIx model
         |> Maybe.map
             (\( ix, h ) ->
                 if model.drag == None then
@@ -155,31 +155,31 @@ handlePointerDown model =
 -- Handle moving and resizing
 
 
-manipulatePlanes : Model -> Vec Float -> Array Plane
-manipulatePlanes model mp =
+manipulateRects : Model -> Vec Float -> Array Rect
+manipulateRects model mp =
     case model.drag of
         None ->
-            model.planes
+            model.rects
 
         Move (Index ix) ->
             let
                 targetWindow =
-                    Array.get ix model.planes
+                    Array.get ix model.rects
             in
             case targetWindow of
                 Just wp ->
                     Array.set ix
                         { wp | position = add mp model.mouseOffset }
-                        model.planes
+                        model.rects
 
                 Nothing ->
                     -- Should never happen
-                    model.planes
+                    model.rects
 
         Reszie (Index ix) corner ->
             let
                 targetWindow =
-                    Array.get ix model.planes
+                    Array.get ix model.rects
 
                 delta =
                     sub mp model.mousePosition
@@ -187,27 +187,27 @@ manipulatePlanes model mp =
             case targetWindow of
                 Just wp ->
                     handleRezise wp corner delta
-                        |> (\w -> Array.set ix w model.planes)
+                        |> (\w -> Array.set ix w model.rects)
 
                 Nothing ->
                     -- Should never happen
-                    model.planes
+                    model.rects
 
 
 
 -- Helpers
 
 
-getPlaneHits : Model -> Maybe Hit
-getPlaneHits model =
+getRectHits : Model -> Maybe Hit
+getRectHits model =
     sortedByOrder model
         |> List.map Tuple.second
         |> List.map (getHit (scale (1 / model.scale) defaultTolerance) model.mousePosition)
         |> List.Extra.findMap identity
 
 
-getPlaneHitsIx : Model -> Maybe ( Index, Hit )
-getPlaneHitsIx model =
+getRectHitsIx : Model -> Maybe ( Index, Hit )
+getRectHitsIx model =
     sortedByOrder model
         |> List.Extra.findMap
             (\( ix, w ) ->
@@ -288,7 +288,7 @@ view toMsg opts model windows =
                 (mapPointerPosition (toMsg << MouseMove))
             )
          , htmlAttribute (Html.Attributes.style "touch-action" "none")
-         , cursor <| getCursor (getPlaneHits model)
+         , cursor <| getCursor (getRectHits model)
          ]
             ++ renderWindows model (List.map (apply toMsg << .render) windows)
             -- Show anchor points
@@ -329,7 +329,7 @@ onDrag toMsg ix =
         )
 
 
-renderWindows : Model -> List (Int -> Plane -> Element msg) -> List (Attribute msg)
+renderWindows : Model -> List (Int -> Rect -> Element msg) -> List (Attribute msg)
 renderWindows model elements =
     let
         focusedIndex =
@@ -348,17 +348,17 @@ renderWindows model elements =
 type alias WindowRender msg =
     { index : Index
     , zIndex : ZIndex
-    , plane : Plane
+    , rect : Rect
     , isFocused : Bool
-    , render : Int -> Plane -> Element msg
+    , render : Int -> Rect -> Element msg
     }
 
 
-getRenderElement : Index -> ( Index, ZIndex, Plane ) -> (Int -> Plane -> Element msg) -> WindowRender msg
+getRenderElement : Index -> ( Index, ZIndex, Rect ) -> (Int -> Rect -> Element msg) -> WindowRender msg
 getRenderElement focusedIndex ( index, zindex, window ) render =
     { index = index
     , zIndex = zindex
-    , plane = window
+    , rect = window
     , isFocused = focusedIndex == index
     , render = render
     }
@@ -379,18 +379,18 @@ fromScreenPosition model =
 
 
 toScreen : { a | offset : Vec Float, scale : Float } -> { b | position : Vec Float, size : Vec Float } -> { position : Vec Float, size : Vec Float }
-toScreen model plane =
-    { position = toScreenPosition model plane.position
-    , size = plane.size |> scale model.scale
+toScreen model rect =
+    { position = toScreenPosition model rect.position
+    , size = rect.size |> scale model.scale
     }
 
 
-{-| Normalize an offsetted, scaled plane back
+{-| Normalize an offsetted, scaled rect back
 -}
 fromScreen : { a | offset : Vec Float, scale : Float } -> { b | position : Vec Float, size : Vec Float } -> { position : Vec Float, size : Vec Float }
-fromScreen model plane =
-    { position = fromScreenPosition model plane.position
-    , size = plane.size |> scale (1 / model.scale)
+fromScreen model rect =
+    { position = fromScreenPosition model rect.position
+    , size = rect.size |> scale (1 / model.scale)
     }
 
 
@@ -402,17 +402,17 @@ viewWindow :
     Model
     -> WindowRender msg
     -> Element.Attribute msg
-viewWindow model { index, zIndex, plane, isFocused, render } =
+viewWindow model { index, zIndex, rect, isFocused, render } =
     let
-        planeOnScreen =
-            toScreen model plane
+        rectOnScreen =
+            toScreen model rect
     in
     Element.inFront
         (el
-            ([ Element.moveRight (getX planeOnScreen.position)
-             , Element.moveDown (getY planeOnScreen.position)
-             , height (px <| round <| getY planeOnScreen.size)
-             , width (px <| round <| getX planeOnScreen.size)
+            ([ Element.moveRight (getX rectOnScreen.position)
+             , Element.moveDown (getY rectOnScreen.position)
+             , height (px <| round <| getY rectOnScreen.size)
+             , width (px <| round <| getX rectOnScreen.size)
              , htmlAttribute (Html.Attributes.style "z-index" (String.fromInt <| unwrapZindex zIndex * 10))
              ]
                 ++ userSelect (model.drag == None && isFocused)
@@ -422,7 +422,7 @@ viewWindow model { index, zIndex, plane, isFocused, render } =
              -- which sets thes isFocusedState to true
             )
          <|
-            render (unwrapIndex index) plane
+            render (unwrapIndex index) rect
         )
 
 
@@ -452,18 +452,18 @@ getOrder listOfIndex =
         |> List.map Tuple.first
 
 
-withOrder : Model -> List ( ZIndex, Plane )
+withOrder : Model -> List ( ZIndex, Rect )
 withOrder m =
-    List.Extra.zip (getOrder m.order) (toList m.planes)
+    List.Extra.zip (getOrder m.order) (toList m.rects)
 
 
-withOrderIndexed : Model -> List ( Index, ZIndex, Plane )
+withOrderIndexed : Model -> List ( Index, ZIndex, Rect )
 withOrderIndexed m =
-    List.Extra.zip (getOrder m.order) (toList m.planes)
+    List.Extra.zip (getOrder m.order) (toList m.rects)
         |> List.indexedMap (\ix ( zindex, window ) -> ( Index ix, zindex, window ))
 
 
-sortedByOrder : Model -> List ( Index, Plane )
+sortedByOrder : Model -> List ( Index, Rect )
 sortedByOrder m =
     withOrder m
         |> List.indexedMap (\ix ( zix, w ) -> ( Index ix, zix, w ))
@@ -472,6 +472,6 @@ sortedByOrder m =
         |> List.reverse
 
 
-mapPlane : (Plane -> Plane) -> Window msg -> Window msg
-mapPlane fn w =
-    { w | plane = fn w.plane }
+mapRect : (Rect -> Rect) -> Window msg -> Window msg
+mapRect fn w =
+    { w | rect = fn w.rect }

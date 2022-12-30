@@ -6,11 +6,11 @@ import Html.Attributes
 import Math.Vector2 exposing (Vec, getX, getY)
 import Window exposing (onDrag)
 import Window.Boundary exposing (getBoundaries)
-import Window.Plane exposing (Plane)
+import Window.Rect exposing (Rect)
 
 
-showBoundaries : Vec Float -> Int -> Plane -> List (Attribute msg)
-showBoundaries tol zindex plane =
+showBoundaries : Vec Float -> Int -> Rect -> List (Attribute msg)
+showBoundaries tol zindex rect =
     List.indexedMap
         (\ix b ->
             Element.inFront
@@ -35,12 +35,12 @@ showBoundaries tol zindex plane =
                     Element.none
                 )
         )
-        (getBoundaries plane tol)
+        (getBoundaries rect tol)
 
 
-debugWindows : { a | windowModel : { b | mousePosition : Vec Float }, window : Vec Float } -> List { plane : Plane, render : (Window.Msg -> msg) -> Int -> { c | position : Vec Float, size : Vec Float } -> Element.Element msg }
+debugWindows : { a | windowModel : { b | mousePosition : Vec Float }, window : Vec Float } -> List { rect : Rect, render : (Window.Msg -> msg) -> Int -> { c | position : Vec Float, size : Vec Float } -> Element.Element msg }
 debugWindows model =
-    [ { plane = Window.Plane.default
+    [ { rect = Window.Rect.default
       , render =
             \tw i w ->
                 simpleWindow tw
@@ -52,7 +52,7 @@ debugWindows model =
                     , text <| "h = " ++ String.fromFloat (getY w.size)
                     ]
       }
-    , { plane = Window.Plane.default
+    , { rect = Window.Rect.default
       , render =
             \tw i _ ->
                 simpleWindow tw

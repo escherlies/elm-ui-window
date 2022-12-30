@@ -17,8 +17,8 @@ You basically have this type...
 
 ```elm
 type alias Window msg =
-{ plane : Plane
-, render : (Msg -> msg) -> Int -> Plane -> Element msg
+{ rect : Rect
+, render : (Msg -> msg) -> Int -> Rect -> Element msg
 }
 ```
 
@@ -66,9 +66,9 @@ view model =
 
 windows : List (Window.Window msg)
 windows =
-    [ -- A window is just a plane in xy space and some render fn to render the content inside that plane. That's it!
-      { plane =
-            -- A plane is a rectangle with a position and size
+    [ -- A window is just a rect in xy space and some render fn to render the content inside that rect. That's it!
+      { rect =
+            -- A rect is a rectangle with a position and size
             { position = vec2 0 0
             , size = vec2 100 100
             }
@@ -85,18 +85,18 @@ windows =
 # Advanced usage
 
 In the simple example we ignored three params of the render function.
-These three params actually are: `toMsg`, `index`, and `plane`. Let's see
+These three params actually are: `toMsg`, `index`, and `rect`. Let's see
 how we can use them to create advanced views:
 
 ```elm
 windows2 : List (Window.Window msg)
 windows2 =
-    [ { plane =
+    [ { rect =
             { position = vec2 0 0
             , size = vec2 100 100
             }
       , render =
-            \toMsg ix plane ->
+            \toMsg ix rect ->
                 column
                     [ Element.Border.width 3
 
@@ -104,12 +104,12 @@ windows2 =
                     -- This can be whereever you like, either everywhere oder at dedicated area like a window title bar.
                     , onDrag toMsg ix
                     ]
-                    -- Use the index and current plane state if you want to use them
+                    -- Use the index and current rect state if you want to use them
                     [ text <| "index  = " ++ String.fromInt ix
-                    , text <| "x      = " ++ String.fromFloat (getX plane.position)
-                    , text <| "y      = " ++ String.fromFloat (getY plane.position)
-                    , text <| "width  = " ++ String.fromFloat (getX plane.size)
-                    , text <| "height = " ++ String.fromFloat (getY plane.size)
+                    , text <| "x      = " ++ String.fromFloat (getX rect.position)
+                    , text <| "y      = " ++ String.fromFloat (getY rect.position)
+                    , text <| "width  = " ++ String.fromFloat (getX rect.size)
+                    , text <| "height = " ++ String.fromFloat (getY rect.size)
                     ]
       }
     ]

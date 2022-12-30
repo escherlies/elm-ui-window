@@ -6,7 +6,7 @@ import Element.Border
 import Element.Font
 import Window exposing (onDrag)
 import Window.Elements exposing (cursor, userSelect)
-import Window.Plane exposing (Plane)
+import Window.Rect exposing (Rect)
 
 
 {-| Show just a rectangle that can be dragged and resized with some content
@@ -20,7 +20,7 @@ simple :
     }
     -> (Window.Msg -> msg)
     -> Int
-    -> Plane
+    -> Rect
     -> Element msg
 simple { backgroundColor, foregroundColor, content, attributes } toMsg ix _ =
     el
@@ -51,7 +51,7 @@ defaultWindowElement :
     }
     -> (Window.Msg -> msg)
     -> Int
-    -> Plane
+    -> Rect
     -> Element msg
 defaultWindowElement { backgroundColor, foregroundColor, title, content } toMsg ix _ =
     column
