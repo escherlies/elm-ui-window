@@ -5,6 +5,7 @@ import Element.Border
 import Html exposing (Html)
 import Math.Vector2 exposing (getX, getY, vec2)
 import Window exposing (onDrag)
+import Window.Boundary exposing (Resize(..))
 
 
 
@@ -72,7 +73,7 @@ view : Model -> Html Msg
 view model =
     layout []
         -- Mount the view wherever you want
-        (Window.view WindowMsg { showAnchorPoints = False } model.windowModel windows)
+        (Window.view WindowMsg model.windowModel windows)
 
 
 windows : List (Window.Window msg)
@@ -89,6 +90,7 @@ windows =
                 -- Just give it some border and you are good to go!
                 el [ Element.Border.width 3 ]
                     (text "Hello, World!")
+      , resize = HideAnchorPoints
       }
     ]
 
@@ -124,6 +126,7 @@ windows2 =
                     , text <| "width  = " ++ String.fromFloat (getX rect.size)
                     , text <| "height = " ++ String.fromFloat (getY rect.size)
                     ]
+      , resize = ShowAnchorPoints
       }
     ]
 

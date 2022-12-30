@@ -9,15 +9,16 @@ import List.Extra
 import Math.Vector2 exposing (Vec, add, getX, getY, scale, sub, vec2)
 import Maybe.Extra exposing (unwrap)
 import String
-import Window.Boundary exposing (Boundary(..), Hit(..), defaultTolerance, getHit, handleRezise)
+import Window.Boundary exposing (Boundary(..), Hit(..), Resize(..), defaultTolerance, getHit, handleRezise)
 import Window.Elements exposing (cursor, showAnchorPoint, userSelect)
 import Window.Rect exposing (Rect)
-import Window.Utils exposing (apply, takeAndAppend, uncurry)
+import Window.Utils exposing (apply, takeAndAppend)
 
 
 type alias Window msg =
     { rect : Rect
     , render : (Msg -> msg) -> Int -> Rect -> Element msg
+    , resize : Resize
     }
 
 
@@ -269,8 +270,8 @@ mapPointerPosition msg =
         |> D.map msg
 
 
-view : (Msg -> msg) -> { a | showAnchorPoints : Bool } -> Model -> List (Window msg) -> Element msg
-view toMsg opts model windows =
+view : (Msg -> msg) -> Model -> List (Window msg) -> Element msg
+view toMsg model windows =
     el
         ([ width fill
          , height fill
@@ -292,18 +293,24 @@ view toMsg opts model windows =
          ]
             ++ renderWindows model (List.map (apply toMsg << .render) windows)
             -- Show anchor points
-            ++ (if opts.showAnchorPoints then
-                    withOrder model
-                        |> List.map (Tuple.mapFirst unwrapZindex)
-                        |> List.map (Tuple.mapSecond (toScreen model))
-                        |> List.map (uncurry (showAnchorPoint defaultTolerance))
-                        |> List.concat
+            ++ renderAnchorPoints model windows
+        )
+        Element.none
+
+
+renderAnchorPoints : Model -> List (Window msg) -> List (Attribute msg)
+renderAnchorPoints model windows =
+    windows
+        |> List.map2 (\( zindex, rect ) { resize } -> ( zindex, rect, resize )) (withOrder model)
+        |> List.map
+            (\( ZIndex zix, rect, resize ) ->
+                if resize == ShowAnchorPoints then
+                    showAnchorPoint defaultTolerance zix (toScreen model rect)
 
                 else
                     []
-               )
-        )
-        Element.none
+            )
+        |> List.concat
 
 
 trackWindow : (Msg -> msg) -> Int -> Vec Float -> msg

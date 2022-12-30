@@ -16,6 +16,12 @@ type Boundary
     | TopLeft
 
 
+type Resize
+    = ShowAnchorPoints
+    | HideAnchorPoints
+    | DisableResize
+
+
 
 -- Hit
 
