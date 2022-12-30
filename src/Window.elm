@@ -1,4 +1,4 @@
-module Window exposing (Model, Msg, Window, fromScreen, fromScreenPosition, init, initWith, mapRect, onDrag, toScreen, toScreenPosition, update, updateRects, view)
+module Window exposing (Model, Msg, Rho, Window, fromScreen, fromScreenPosition, init, initWith, mapRect, onDrag, toRho, toScreen, toScreenPosition, update, updateRects, view)
 
 import Array exposing (Array, toList)
 import Element exposing (Attribute, Element, clip, el, fill, height, htmlAttribute, px, width)
@@ -72,11 +72,11 @@ init =
 
 initWith : List (Window msg) -> Model
 initWith =
-    handleUpdateRects init << List.map toR
+    handleUpdateRects init << List.map toRho
 
 
-toR : Window msg -> Rho
-toR { rect, resize } =
+toRho : Window msg -> Rho
+toRho { rect, resize } =
     Rho rect resize
 
 
